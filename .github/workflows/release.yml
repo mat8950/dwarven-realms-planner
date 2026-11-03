@@ -1,0 +1,78 @@
+# Builds the installers on Windows, Linux and macOS (Apple Silicon).
+# - Push a tag "v*" (for example: git tag v0.1.0 && git push origin v0.1.0): the installers are
+#   attached to a draft release, to check and publish by hand.
+# - Run the workflow by hand (Actions tab): the installers are only kept as workflow artifacts.
+# The tag must match the version in app/src-tauri/tauri.conf.json and Cargo.toml.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            platform: windows-latest
+            args: ''
+          - name: linux-x64
+            platform: ubuntu-22.04
+            args: ''
+          - name: macos-arm64
+            platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the Linux libraries Tauri needs
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf rpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install the UI dependencies
+        working-directory: app
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: app
+          args: ${{ matrix.args }}
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: Dwarven Realms Planner ${{ github.ref_name }}
+          releaseBody: |
+            Installers for Windows (.msi, .exe), Linux (.deb, .rpm, .AppImage) and macOS Apple Silicon (.dmg).
+
+            The planner contains no game data. It reads the data from your own installation of Dwarven Realms.
+            This project is not affiliated with or endorsed by Crater Studios.
+
+            The installers are not signed. Windows SmartScreen asks for confirmation ("More info", then "Run anyway").
+            On macOS, open the app once with right-click > Open, or run `xattr -dr com.apple.quarantine "/Applications/Dwarven Realms Planner.app"`.
+          releaseDraft: true
+          prerelease: false
+          uploadUpdaterJson: false
+          uploadWorkflowArtifacts: true

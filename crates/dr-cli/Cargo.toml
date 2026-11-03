@@ -1,0 +1,12 @@
+[package]
+name = "dr-cli"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde_json.workspace = true
+tiny_http = "0.12"
+dr-core = { path = "../dr-core" }

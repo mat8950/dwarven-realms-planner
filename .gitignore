@@ -1,0 +1,27 @@
+# Build output
+/target
+/tools/.bin
+node_modules
+/app/dist
+/app/src-tauri/gen
+/app/test-results
+
+# Game data: extracted from the player's own installation, never distributed
+# (the game's terms forbid copying and distributing its content).
+/data/extracted
+/data/assets
+/data/mappings
+*.usmap
+*.uasset
+*.uexp
+*.ubulk
+*.pak
+*.locres
+
+# Decompiled game code, saves and live dumps used during development
+/research
+
+# Local files
+*.sav
+*.log
+.DS_Store
