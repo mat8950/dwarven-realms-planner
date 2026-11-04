@@ -6,6 +6,7 @@ import { PET_SLOT, isMod, loadFonts } from './game'
 import { isLootMod, modCondition, type Active, type Condition, type Probe } from './conditions'
 import { autoKind, type Kind } from './history'
 import { probeKey, skillProbes, treeProbes } from './tree'
+import { storedMax } from './skills'
 import type { Attr, BuildInput, Catalog, CharacterView, DpsView, Impact, ItemView, Objective, SaveEntry, SetupStatus, Snapshot, StatsView, TreeOption, WeaponInfo } from './types'
 
 export type Selection = number | 'weapon' | null
@@ -97,7 +98,8 @@ class Planner {
     }
     for (const s of c.skill_sets) {
       for (const k of s.skills) {
-        if (k.max_level > 0 && this.skillLevel(s.table, k.row) >= k.max_level) continue
+        const max = storedMax(s.table, k.max_level)
+        if (max > 0 && this.skillLevel(s.table, k.row) >= max) continue
         for (const [t] of k.attributes) out.add(t)
       }
     }
@@ -560,12 +562,13 @@ class Planner {
 
   /** Gain of the objective for a tree option (sum of its bonuses; undefined = not analysed).
    *  For an owned option (`owned`), what it brings: the loss when it is removed. */
-  optionImpact(o: Pick<TreeOption, 'attributes'>, owned = false): number | undefined {
+  /** Gain of an option (`owned`: loss of removing it); `scale` levels at once (a crystal card's third level). */
+  optionImpact(o: Pick<TreeOption, 'attributes'>, owned = false, scale = 1): number | undefined {
     let sum = 0
     let known = false
     for (const [t, v] of o.attributes) {
       if (!v) continue
-      const i = this.treeImpacts[probeKey(t, owned ? -v : v)]
+      const i = this.treeImpacts[probeKey(t, (owned ? -v : v) * scale)]
       if (i && unquantified(t, i, this.statMods)) continue
       const g = i && this.objectiveGain(i)
       if (g === undefined) return undefined

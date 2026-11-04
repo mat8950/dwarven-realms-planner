@@ -2,6 +2,7 @@
 // owned; a node can be bought next to an owned one (1 point); it can be refunded when every
 // other owned node stays connected to the root.
 import type { SkillSet, SkillTree, TreeOption } from './types'
+import { levelSteps } from './skills'
 
 const rowIndex = new WeakMap<SkillTree, Map<string, number>>()
 
@@ -102,10 +103,12 @@ export function skillProbes(sets: SkillSet[], level: (table: string, row: string
   const seen = new Map<string, [string, number]>()
   for (const set of sets) {
     for (const s of set.skills) {
+      // One shown level more and one less: several stored levels for a crystal card's third level.
+      const { up, down } = levelSteps(set.table, level(set.table, s.row), s.max_level)
       for (const [t, v] of s.attributes) {
         if (!v) continue
-        seen.set(probeKey(t, v), [t, v])
-        if (level(set.table, s.row) > 0) seen.set(probeKey(t, -v), [t, -v])
+        if (up) seen.set(probeKey(t, v * up), [t, v * up])
+        if (down) seen.set(probeKey(t, -v * down), [t, -v * down])
       }
     }
   }

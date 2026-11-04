@@ -63,7 +63,7 @@ const fr = {
   'skillset.Magic': 'Magie',
   'skillset.Common': 'Poings',
   'skillset.Cards': 'Cartes cristal',
-  'skillset.Crafting': 'Artisanat',
+  'skillset.Elven': 'Arbre elfique',
 
   'paperdoll.cr': 'Combat Rating',
 
@@ -401,6 +401,7 @@ const fr = {
   'setup.dumperFound': "Fichier de mappings trouvé et importé.",
   'setup.dumperRemoveHelp': "Ensuite, fermez le jeu, retirez UE4SS et l'option de lancement :",
   'setup.dumperRemove': "Retirer UE4SS du jeu",
+  'skills.cardsNote': "Trois niveaux, 5 quartz chacun ; le niveau 3 double l'effet (bonus × 6).",
 }
 
 export default fr

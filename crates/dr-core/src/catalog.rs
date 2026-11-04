@@ -207,11 +207,11 @@ fn status_effects(gd: &GameData) -> Result<Vec<StatusEffectInfo>> {
         .collect())
 }
 
-/// Skills outside the main tree, by DataTable: stance skills, crystal cards, crafting.
+/// Skills outside the main tree, by DataTable: stance skills, crystal cards, the elven tree.
 #[derive(Serialize, Clone, Debug)]
 pub struct SkillSet {
     pub table: String,
-    /// English key, translated by the UI (`Spear`, `Cards`, `Crafting`...).
+    /// English key, translated by the UI (`Spear`, `Cards`, `Elven`...).
     pub name: String,
     /// `E_Stance` value of a stance skill table.
     pub stance: Option<u8>,
@@ -244,7 +244,8 @@ fn skill_sets(gd: &GameData) -> Result<Vec<SkillSet>> {
         ("DT_Skills_Magery", "Magic", Some("Magic")),
         ("DT_Skills_Unarmed", "Common", Some("Common")),
         ("DT_Crystal_Cards_Skills", "Cards", None),
-        ("Localized/DT_Skills_Crafting_S24", "Crafting", None),
+        // The elven tree (in game: "Un-Learn Elven Tree"), stored in a crafting table.
+        ("Localized/DT_Skills_Crafting_S24", "Elven", None),
     ];
     let mut out = Vec::new();
     for (file, name, st) in sets {

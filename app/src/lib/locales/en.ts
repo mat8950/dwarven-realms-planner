@@ -64,7 +64,7 @@ const en: Record<keyof typeof fr, string> = {
   'skillset.Magic': 'Magic',
   'skillset.Common': 'Fists',
   'skillset.Cards': 'Crystal cards',
-  'skillset.Crafting': 'Crafting',
+  'skillset.Elven': 'Elven tree',
 
   'paperdoll.cr': 'Combat Rating',
 
@@ -402,6 +402,7 @@ const en: Record<keyof typeof fr, string> = {
   'setup.dumperFound': "Mappings file found and imported.",
   'setup.dumperRemoveHelp': "Then close the game, and remove UE4SS and the launch option:",
   'setup.dumperRemove': "Remove UE4SS from the game",
+  'skills.cardsNote': "Three levels, 5 quartz each; level 3 doubles the effect (bonus × 6).",
 }
 
 export default en

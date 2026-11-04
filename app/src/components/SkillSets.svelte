@@ -2,11 +2,13 @@
   import { formatValue } from '../lib/format'
   import { asset } from '../lib/game'
   import { t } from '../lib/i18n.svelte'
+  import { CARD_TABLE, levelSteps, shownLevel, shownMax, storedLevel, storedMax } from '../lib/skills'
   import { planner } from '../lib/store.svelte'
   import type { SkillInfo, SkillSet } from '../lib/types'
   import ImpactBadge from './ImpactBadge.svelte'
 
-  /** Stance skills, crystal cards and crafting: levels are free here (no point budget). */
+  /** Stance skills, crystal cards and the elven tree: levels are free here (no point budget). Levels are the
+   *  ones the game shows (lib/skills.ts: a crystal card's third level is stored as 6). */
   const info = (tag: string) => planner.catalog?.attributes[tag]
   // Skill flags (Skills.Spear.SpearQ = 1) unlock behaviour: they have no name to show.
   const shownAttrs = (s: SkillInfo) => s.attributes.filter(([t]) => info(t)?.name || !t.startsWith('EasyRPG.Attributes.Skills.'))
@@ -23,17 +25,24 @@
   const isOpen = (s: SkillSet) => open[s.table] ?? rank(s) < 2
   const setName = (s: SkillSet) => t(`skillset.${s.name}`, {}, s.name)
 
-  const level = (set: SkillSet, s: SkillInfo) => planner.skillLevel(set.table, s.row)
+  const stored = (set: SkillSet, s: SkillInfo) => planner.skillLevel(set.table, s.row)
+  const level = (set: SkillSet, s: SkillInfo) => shownLevel(set.table, stored(set, s))
+  const maxLevel = (set: SkillSet, s: SkillInfo) => shownMax(set.table, s.max_level)
   const saved = (set: SkillSet, s: SkillInfo) => planner.savedSkillLevel(set.table, s.row)
-  const gain = (s: SkillInfo) => planner.optionImpact(s)
-  const loss = (set: SkillSet, s: SkillInfo) => (level(set, s) > 0 ? planner.optionImpact(s, true) : undefined)
-  const set = (st: SkillSet, s: SkillInfo, l: number) => planner.setSkillLevel(st.table, s.row, l, s.max_level)
-  const canUp = (st: SkillSet, s: SkillInfo) => s.max_level <= 0 || level(st, s) < s.max_level
+  const steps = (set: SkillSet, s: SkillInfo) => levelSteps(set.table, stored(set, s), s.max_level)
+  const gain = (st: SkillSet, s: SkillInfo) => planner.optionImpact(s, false, steps(st, s).up)
+  const loss = (st: SkillSet, s: SkillInfo) => (level(st, s) > 0 ? planner.optionImpact(s, true, steps(st, s).down) : undefined)
+  const set = (st: SkillSet, s: SkillInfo, l: number) => {
+    if (!Number.isFinite(l)) return
+    const top = maxLevel(st, s)
+    planner.setSkillLevel(st.table, s.row, storedLevel(st.table, Math.max(0, top > 0 ? Math.min(Math.round(l), top) : Math.round(l))), storedMax(st.table, s.max_level))
+  }
+  const canUp = (st: SkillSet, s: SkillInfo) => steps(st, s).up > 0
 
   /** Best single levels to add, across all tables. */
   const best = $derived(
     sets
-      .flatMap((st) => st.skills.filter((s) => canUp(st, s)).map((s) => ({ st, s, g: gain(s) })))
+      .flatMap((st) => st.skills.filter((s) => canUp(st, s)).map((s) => ({ st, s, g: gain(st, s) })))
       .filter((x) => x.g !== undefined && Number.isFinite(x.g) && x.g > 1e-7)
       .sort((a, b) => b.g! - a.g!)
       .slice(0, 8),
@@ -50,7 +59,7 @@
     {#each best as { st, s, g } (st.table + s.row)}
       <button class="pick" onclick={() => set(st, s, level(st, s) + 1)} title={t('skills.plusOne')}>
         {#if s.icon}<img src={asset(s.icon)} alt="" />{/if}
-        <span class="pname">{label(s)}<small>{setName(st)} · {t('skills.level', { n: level(st, s) })}{s.max_level > 0 ? `/${s.max_level}` : ''}</small></span>
+        <span class="pname">{label(s)}<small>{setName(st)} · {t('skills.level', { n: level(st, s) })}{maxLevel(st, s) > 0 ? `/${maxLevel(st, s)}` : ''}</small></span>
         <ImpactBadge value={g} title={t('skills.gainTitle')} />
       </button>
     {:else}
@@ -66,25 +75,27 @@
         {#if st.stance !== null && st.stance === planner.stats?.stance}<span class="cur">{t('skills.current')}</span>{/if}
         <span class="count">{st.skills.filter((s) => level(st, s) > 0).length}/{st.skills.length}</span>
       </button>
+      {#if isOpen(st) && st.table === CARD_TABLE}<p class="note">{t('skills.cardsNote')}</p>{/if}
       {#if isOpen(st)}
         {#each st.skills as s (s.row)}
           {@const l = level(st, s)}
-          <div class="skill" class:off={l === 0} class:changed={l !== saved(st, s)}>
+          {@const top = maxLevel(st, s)}
+          <div class="skill" class:off={l === 0} class:changed={stored(st, s) !== saved(st, s)}>
             {#if s.icon}<img src={asset(s.icon)} alt="" />{:else}<span class="noicon"></span>{/if}
             <span class="sname" title={s.description || s.row}>
               {label(s)}
               <small>{t('skills.perLevel', { bonus: bonusText(s) })}{s.requires ? ` · ${s.requires}` : ''}</small>
-              {#if l > 1}<small class="total">{t('skills.total', { bonus: bonusText(s, l) })}</small>{/if}
+              {#if stored(st, s) > 1}<small class="total">{t('skills.total', { bonus: bonusText(s, stored(st, s)) })}</small>{/if}
             </span>
             <span class="badges">
-              <ImpactBadge value={canUp(st, s) ? gain(s) : undefined} title={t('skills.gainTitle')} />
+              <ImpactBadge value={canUp(st, s) ? gain(st, s) : undefined} title={t('skills.gainTitle')} />
               {#if l > 0}<ImpactBadge value={loss(st, s)} title={t('skills.lossTitle')} />{/if}
             </span>
             <span class="lvl">
               <button class="btn ghost" disabled={l === 0} onclick={() => set(st, s, l - 1)}>−</button>
-              <input class="field num" type="number" min="0" max={s.max_level > 0 ? s.max_level : undefined} value={l} onchange={(e) => set(st, s, parseFloat(e.currentTarget.value))} />
+              <input class="field num" type="number" min="0" max={top > 0 ? top : undefined} value={l} onchange={(e) => set(st, s, parseFloat(e.currentTarget.value))} />
               <button class="btn ghost" disabled={!canUp(st, s)} onclick={() => set(st, s, l + 1)}>+</button>
-              <small>{s.max_level > 0 ? `/${s.max_level}` : ''}</small>
+              <small>{top > 0 ? `/${top}` : ''}</small>
             </span>
           </div>
         {/each}
@@ -209,6 +220,11 @@
     width: 34px;
   }
   .none,
+  .note {
+    margin: 2px 0 6px 22px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
   .fine {
     font-size: 12px;
     color: var(--text-faint);

@@ -31,13 +31,41 @@
   let statusQuery = $state('')
   const statusInfo = (row: string) => planner.catalog?.status_effects.find((e) => e.row === row)
   const statusLabel = (e: { row: string; name: string }) => (e.name && e.name !== 'None' ? e.name : e.row)
+  /** Buffs to add. The game has several rows for one buff (one per source): rows with the same name, stacks
+   *  and stats show once; rows with the same name but other stats show their bonus to tell them apart. */
   const statusChoices = $derived.by(() => {
     const q = statusQuery.trim().toLowerCase()
-    return (planner.catalog?.status_effects ?? [])
-      .filter((e) => e.positive && !(e.row in planner.statusEffects))
+    const seen = new Set<string>()
+    const unique = (planner.catalog?.status_effects ?? [])
+      .filter((e) => e.positive)
+      .filter((e) => {
+        const key = `${statusLabel(e)}|${e.max_stack}|${JSON.stringify(e.attributes)}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+    const named = new Map<string, number>()
+    for (const e of unique) named.set(statusLabel(e), (named.get(statusLabel(e)) ?? 0) + 1)
+    return unique
+      .filter((e) => !(e.row in planner.statusEffects))
       .filter((e) => !q || `${statusLabel(e)} ${e.row} ${e.description}`.toLowerCase().includes(q))
-      .sort((a, b) => statusLabel(a).localeCompare(statusLabel(b)))
+      .map((e) => ({ ...e, label: (named.get(statusLabel(e)) ?? 0) > 1 ? `${statusLabel(e)} (${statusBonus(e.row, e.max_stack) || e.row})` : statusLabel(e) }))
+      .sort((a, b) => a.label.localeCompare(b.label))
   })
+
+  /** Keeps a popup inside the window: shifted left when it would overflow, scrolled when too tall. */
+  function keepInView(node: HTMLElement) {
+    const fit = () => {
+      node.style.left = '0px'
+      const r = node.getBoundingClientRect()
+      const over = r.right - (window.innerWidth - 12)
+      if (over > 0) node.style.left = `${-Math.min(over, Math.max(0, r.left - 12))}px`
+      node.style.maxHeight = `${Math.max(200, window.innerHeight - r.top - 12)}px`
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return { destroy: () => window.removeEventListener('resize', fit) }
+  }
   const statusBonus = (row: string, stacks: number) =>
     (statusInfo(row)?.attributes ?? []).map(([t, v]) => `${formatValue(v * stacks, info(t))} ${info(t)?.name || t.split('.').pop()}`).join(' · ')
   const activeCount = $derived(planner.effects.length + Object.keys(planner.statusEffects).length + (planner.ruptureOrbs > 0 ? 1 : 0) + Number(planner.colossus) + Number(planner.unholyVoid))
@@ -115,7 +143,7 @@
   <div class="group pop-anchor">
     <button class="btn" onclick={() => (open = open === 'effects' ? null : 'effects')}>{t('top.effects')} {activeCount ? `(${activeCount})` : ''}</button>
     {#if open === 'effects'}
-      <div class="pop frame">
+      <div class="pop frame" use:keepInView>
         <div class="label">{t('fx.game')}</div>
         <p class="hint">{t('fx.gameHint')}</p>
         {#each Object.entries(planner.statusEffects) as [row, stacks] (row)}
@@ -132,7 +160,7 @@
           <input class="field" placeholder={t('fx.search')} bind:value={statusQuery} />
           <select class="field" bind:value={statusRow}>
             <option value="">{t('fx.pick')}</option>
-            {#each statusChoices as e (e.row)}<option value={e.row}>{t('fx.option', { name: statusLabel(e), n: e.max_stack })}</option>{/each}
+            {#each statusChoices as e (e.row)}<option value={e.row}>{e.max_stack > 1 ? t('fx.option', { name: e.label, n: e.max_stack }) : e.label}</option>{/each}
           </select>
           <button class="btn" disabled={!statusRow} onclick={() => (setStatus(statusRow, statusInfo(statusRow)?.max_stack ?? 1), (statusRow = ''))}>{t('common.add')}</button>
         </div>
@@ -174,7 +202,7 @@
   <div class="group pop-anchor">
     <button class="btn" onclick={() => (open = open === 'builds' ? null : 'builds')}>{t('top.builds')}</button>
     {#if open === 'builds'}
-      <div class="pop frame">
+      <div class="pop frame" use:keepInView>
         <div class="label">{t('builds.save')}</div>
         <div class="eff-add">
           <input class="field" placeholder={t('builds.name')} bind:value={buildName} />
@@ -247,6 +275,7 @@
     display: flex;
     flex-direction: column;
     white-space: normal;
+    overflow-wrap: anywhere;
   }
   .eff.status small {
     font-family: var(--font-ui);
@@ -297,6 +326,10 @@
     top: calc(100% + 10px);
     left: 0;
     width: 380px;
+    max-width: calc(100vw - 24px);
+    overflow-y: auto;
+    /* The top bar keeps its controls on one line; popup texts wrap. */
+    white-space: normal;
     padding: 12px 14px;
     z-index: 100;
     display: flex;
