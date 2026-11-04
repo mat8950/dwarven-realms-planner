@@ -42,6 +42,13 @@ jobs:
         working-directory: app
         run: node tests/i18n-check.mjs
 
+      # The app bundles the extractor (dr-extract, .NET): tauri-build needs it before compiling.
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build the extractor
+        run: tools/extract/build-extractor.sh linux-x64
+
       # The Tauri crate embeds the built UI, so build it before compiling.
       - name: Build the UI
         working-directory: app

@@ -9,5 +9,6 @@ pub mod history;
 pub mod natives;
 pub mod planner;
 pub mod save;
+pub mod setup;
 pub mod value;
 pub mod vm;

@@ -48,10 +48,9 @@ impl Snapshot {
     }
 }
 
-/// `$XDG_DATA_HOME/dr-planner/history` (default `~/.local/share/...`).
+/// `<data dir>/dr-planner/history` (Linux: `~/.local/share/dr-planner/history`).
 pub fn history_dir() -> PathBuf {
-    let base = std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".local/share"));
-    base.join("dr-planner/history")
+    crate::setup::data_dir().join("history")
 }
 
 /// History key of a save: its file name without extension (one file per character).

@@ -2,8 +2,10 @@ import { mount } from 'svelte'
 import './app.css'
 import App from './App.svelte'
 import { debug, installGlobalHandlers } from './lib/debug.svelte'
+import { loadFonts } from './lib/game'
 
 installGlobalHandlers()
+loadFonts()
 debug.log('info', 'app', `UI démarrée (${'__TAURI_INTERNALS__' in window ? 'Tauri' : 'navigateur'})`)
 
 const app = mount(App, {

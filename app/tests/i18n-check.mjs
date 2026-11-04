@@ -31,7 +31,7 @@ for (const f of walk(src).filter((f) => /\.(svelte|ts)$/.test(f) && !f.includes(
     }
   }
 }
-const unused = [...ref].filter((k) => !used.has(k) && !/^(rarity|slot|stance|race|skillset)\./.test(k))
+const unused = [...ref].filter((k) => !used.has(k) && !/^(rarity|slot|stance|race|skillset|setup\.step|setup\.store)\./.test(k))
 if (unused.length) console.log(`unused keys (not an error): ${unused.join(', ')}`)
 console.log(problems ? `${problems} problem(s)` : `ok: ${ref.size} keys, ${used.size} used directly`)
 process.exit(problems ? 1 : 0)

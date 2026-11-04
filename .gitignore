@@ -4,6 +4,7 @@
 node_modules
 /app/dist
 /app/src-tauri/gen
+/app/src-tauri/binaries
 /app/test-results
 
 # Game data: extracted from the player's own installation, never distributed

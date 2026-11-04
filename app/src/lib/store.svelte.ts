@@ -2,11 +2,11 @@ import { api } from './api'
 import { debug } from './debug.svelte'
 import { i18n, t } from './i18n.svelte'
 import { forgeExempt, heartFactor, scaleHearts } from './forge'
-import { PET_SLOT, isMod } from './game'
+import { PET_SLOT, isMod, loadFonts } from './game'
 import { isLootMod, modCondition, type Active, type Condition, type Probe } from './conditions'
 import { autoKind, type Kind } from './history'
 import { probeKey, skillProbes, treeProbes } from './tree'
-import type { Attr, BuildInput, Catalog, CharacterView, DpsView, Impact, ItemView, Objective, SaveEntry, Snapshot, StatsView, TreeOption, WeaponInfo } from './types'
+import type { Attr, BuildInput, Catalog, CharacterView, DpsView, Impact, ItemView, Objective, SaveEntry, SetupStatus, Snapshot, StatsView, TreeOption, WeaponInfo } from './types'
 
 export type Selection = number | 'weapon' | null
 export type ForgeMode = 'current' | 'none' | 'max'
@@ -112,6 +112,9 @@ class Planner {
   treeOpen = $state(false)
   /** Progression history view, and the open character's snapshots (oldest first). */
   historyOpen = $state(false)
+  /** Game data setup (desktop app): installation, mappings, extracted data. Null in a browser. */
+  setup = $state<SetupStatus | null>(null)
+  setupOpen = $state(false)
   history = $state<Snapshot[]>([])
   /** Gear set of history points set by hand (`save|save_modified`), over the automatic one. */
   historyKinds = $state<Record<string, Kind>>(loadKinds())
@@ -138,6 +141,28 @@ class Planner {
   builds = $state<SavedBuild[]>(loadBuilds())
 
   async init() {
+    await this.refreshSetup()
+    // No game data yet (first run of an installed app): the setup screen extracts it.
+    if (this.setup && !this.setup.data_root) {
+      this.setupOpen = true
+      this.loading = false
+      return
+    }
+    await this.load()
+    this.startHistory()
+  }
+
+  async refreshSetup() {
+    try {
+      this.setup = await api.setupStatus()
+    } catch (e) {
+      debug.log('error', 'setup', String(e))
+    }
+  }
+
+  /** Loads the catalog and the saves, and opens the first character. */
+  private async load() {
+    this.loading = true
     try {
       this.catalog = await api.catalog()
       if (this.catalog.lang !== i18n.language.game) this.catalog = await api.setLanguage(i18n.language.game)
@@ -148,9 +173,24 @@ class Planner {
     } finally {
       this.loading = false
     }
-    // History: one point per save change, checked now and every 2 minutes.
+  }
+
+  /** After an extraction (or a new save folder): the backend has new data, start again from it. */
+  async reloadData() {
+    await this.refreshSetup()
+    loadFonts()
+    this.error = null
+    this.character = null
+    this.stats = null
+    await this.load()
+    this.startHistory()
+  }
+
+  private historyTimer: ReturnType<typeof setInterval> | undefined
+  /** History: one point per save change, checked now and every 2 minutes. */
+  private startHistory() {
     void this.captureHistory()
-    setInterval(() => void this.captureHistory(), 120_000)
+    if (this.historyTimer === undefined) this.historyTimer = setInterval(() => void this.captureHistory(), 120_000)
   }
 
   /** Switches the planner texts and the game texts; the build being edited is kept. */

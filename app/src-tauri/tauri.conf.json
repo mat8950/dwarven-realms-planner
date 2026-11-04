@@ -27,6 +27,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": ["binaries/dr-extract"],
     "publisher": "Dwarven Realms Planner contributors",
     "copyright": "MIT OR Apache-2.0. Not affiliated with Crater Studios.",
     "category": "Utility",

@@ -167,6 +167,9 @@
     {t('top.tree', { n: planner.treeRows().length, max: planner.treeBudget() })}
   </button>
   <button class="btn" onclick={() => (planner.historyOpen = true)} title={t('top.historyTitle')}>{t('top.history')}</button>
+  {#if planner.setup}
+    <button class="btn" class:stale={planner.setup.install && !planner.setup.up_to_date} onclick={() => (planner.setupOpen = true)} title={planner.setup.install && !planner.setup.up_to_date ? t('top.dataOld') : t('top.dataTitle')}>{t('top.data')}</button>
+  {/if}
 
   <div class="group pop-anchor">
     <button class="btn" onclick={() => (open = open === 'builds' ? null : 'builds')}>{t('top.builds')}</button>
@@ -269,6 +272,9 @@
   }
   .edited-tree {
     border-color: var(--gold-bright);
+  }
+  .stale {
+    border-color: var(--bad);
   }
   .group .label {
     font-size: 11px;

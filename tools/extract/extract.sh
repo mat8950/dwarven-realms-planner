@@ -40,14 +40,14 @@ rm -rf "$WORK/raw"
 echo "== building CUE4Parse exporter"
 mkdir -p "$WORK/nuget" "$WORK/exporter"
 docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e DOTNET_CLI_HOME=/tmp \
-    -v "$ROOT/tools/extract/cue4parse:/src:ro" -v "$WORK:/w" "$DOTNET_IMAGE" \
-    sh -c "cp -r /src /tmp/app && cd /tmp/app && NUGET_PACKAGES=/w/nuget dotnet publish -c Release -o /w/exporter -v q"
+    -v "$ROOT/tools/extract:/src:ro" -v "$WORK:/w" "$DOTNET_IMAGE" \
+    sh -c "cp -r /src /tmp/x && cd /tmp/x/cue4parse && NUGET_PACKAGES=/w/nuget dotnet publish -c Release -o /w/exporter -v q"
 
 run_export() { # <outDir> <filters>
     rm -rf "$WORK/$1"
     docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e DOTNET_CLI_HOME=/tmp \
         -e USMAP=/map.usmap -v "$USMAP:/map.usmap:ro" -v "$WORK:/w" "$DOTNET_IMAGE" \
-        dotnet /w/exporter/app.dll /w/raw/ProjectAlpha "/w/$1" "$2"
+        dotnet /w/exporter/dr-extract.dll /w/raw/ProjectAlpha "/w/$1" "$2"
 }
 
 echo "== exporting tables"
@@ -86,7 +86,7 @@ done < "$WORK/montages.txt"
 rm -rf "$WORK/montjson"
 docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e DOTNET_CLI_HOME=/tmp \
     -e USMAP=/map.usmap -v "$USMAP:/map.usmap:ro" -v "$WORK:/w" "$DOTNET_IMAGE" \
-    dotnet /w/exporter/app.dll /w/raw/ProjectAlpha /w/montjson @/w/montage-filters.txt json
+    dotnet /w/exporter/dr-extract.dll /w/raw/ProjectAlpha /w/montjson @/w/montage-filters.txt json
 python3 -I "$ROOT/tools/extract/anims.py" "$WORK/montjson" "$ROOT/data/extracted/attack_anims.json"
 
 echo "== skill tree layout"
@@ -114,7 +114,7 @@ grep '\.uasset$' "$WORK/texture-paths.txt" > "$WORK/texture-filters.txt"
 rm -rf "$WORK/assets"
 docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e DOTNET_CLI_HOME=/tmp \
     -e USMAP=/map.usmap -v "$USMAP:/map.usmap:ro" -v "$WORK:/w" "$DOTNET_IMAGE" \
-    dotnet /w/exporter/app.dll /w/raw/ProjectAlpha /w/assets @/w/texture-filters.txt assets
+    dotnet /w/exporter/dr-extract.dll /w/raw/ProjectAlpha /w/assets @/w/texture-filters.txt assets
 # Game paths (/Game/X/Y) map to data/assets/X/Y.webp.
 rm -rf "$ROOT/data/assets"
 (cd "$WORK/assets/ProjectAlpha/Content" && find . -name '*.png') | while read -r f; do

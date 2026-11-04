@@ -336,3 +336,40 @@ export interface Snapshot {
 }
 
 export type Objective = { kind: 'dps'; boss: boolean } | { kind: 'cr' } | { kind: 'attack'; index: number } | { kind: 'ability'; index: number }
+
+/** A game installation found on this computer (dr_core::setup::GameInstall). */
+export interface GameInstall {
+  dir: string
+  /** steam, epic or manual */
+  store: string
+  build: string
+  save_dir: string | null
+}
+
+/** State of the game data setup (app/src-tauri/src/gamesetup.rs). */
+export interface SetupStatus {
+  installs: GameInstall[]
+  install: GameInstall | null
+  manual_dir: string | null
+  save_dir: string | null
+  data_root: string | null
+  data_build: string | null
+  up_to_date: boolean
+  mappings: string | null
+  dumped: string[]
+  extractor: boolean
+  /** The planner's UE4SS mappings dumper is in the game folder. */
+  dumper_installed: boolean
+  /** linux, windows or macos */
+  os: string
+}
+
+/** One line of the extractor's progress (`extract-progress` event). */
+export interface ExtractProgress {
+  step?: string
+  done?: number
+  total?: number
+  build?: string
+  warn?: string
+  error?: string
+}

@@ -1,5 +1,5 @@
 //! Append-only debug journal shared by the app and the HTTP bridge:
-//! `~/.cache/dr-planner/app.log` (rotated to `app.log.1` past 5 MB).
+//! `<cache dir>/dr-planner/app.log` (Linux: `~/.cache/...`, rotated to `app.log.1` past 5 MB).
 //! Each line: `<UTC time> <LEVEL> [<source>] <message>`.
 
 use std::fs::{self, OpenOptions};
@@ -12,8 +12,7 @@ static LOCK: Mutex<()> = Mutex::new(());
 const MAX_BYTES: u64 = 5_000_000;
 
 pub fn path() -> PathBuf {
-    let base = std::env::var_os("XDG_CACHE_HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".cache"));
-    base.join("dr-planner/app.log")
+    crate::setup::cache_dir().join("app.log")
 }
 
 /// `2026-10-28 15:20:03.123Z`

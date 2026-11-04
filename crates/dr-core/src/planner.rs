@@ -740,10 +740,10 @@ fn attrs_of(v: &Value) -> Vec<Attr> {
         .collect()
 }
 
-/// Default Proton save folder of the game.
+/// Save folder of the game: the one picked in the setup screen, else the installation's
+/// (see `setup::Settings::save_dir`). Empty when none is found.
 pub fn default_save_dir() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_default();
-    PathBuf::from(home).join("Games/steamapps/compatdata/2015240/pfx/drive_c/users/steamuser/AppData/Local/ProjectAlpha/Saved/SaveGames")
+    crate::setup::Settings::load().save_dir().unwrap_or_default()
 }
 
 /// Character saves in `dir` (skips backups, world saves and settings).

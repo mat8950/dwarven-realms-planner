@@ -43,7 +43,7 @@ fn main() -> Result<()> {
         i += 2;
     }
     let Some(save_path) = save_path else { bail!("usage: dr-cli <character.sav> [--stance N] [--potions N] [--compare fixture.json] [--all]") };
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = std::env::var_os("DR_PLANNER_ROOT").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
 
     let t = std::time::Instant::now();
     let gd = GameData::load(&root, "fr")?;

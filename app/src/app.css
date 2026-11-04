@@ -1,25 +1,4 @@
-/* Fonts shipped with the game (extracted by tools/extract). */
-@font-face {
-  font-family: 'Cormorant Unicase';
-  src: url('/fonts/CormorantUnicase-Bold.ttf') format('truetype');
-  font-weight: 700;
-}
-@font-face {
-  font-family: 'Mason';
-  src: url('/fonts/MasonSanAltBol.ttf') format('truetype');
-  font-weight: 700;
-}
-@font-face {
-  font-family: 'Petrona';
-  src: url('/fonts/Petrona-VariableFont_wght.ttf') format('truetype');
-  font-weight: 100 900;
-}
-@font-face {
-  font-family: 'Alegreya Sans';
-  src: url('/fonts/AlegreyaSans-Bold.ttf') format('truetype');
-  font-weight: 700;
-}
-
+/* The game fonts are declared by loadFonts() (lib/game.ts). */
 :root {
   --bg: #0d0c09;
   --bg-2: #16140f;

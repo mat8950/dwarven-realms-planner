@@ -24,8 +24,28 @@ The installers are not signed:
 - macOS: the first time, open the app with right-click > Open. Or run
   `xattr -dr com.apple.quarantine "/Applications/Dwarven Realms Planner.app"`.
 
-Work in progress: the installed app does not extract the game data by itself yet. Until it does, extract the data
-with `tools/extract/extract.sh` (see below) and start the app with `DR_PLANNER_ROOT` set to this repository.
+### First run: extracting the game data
+
+The app opens on its "Game data" screen (also in the top bar, red after a game update):
+
+1. **Game**: Steam libraries (Windows, Linux, CrossOver on macOS) and Epic (Windows, Heroic on Linux) are searched.
+   Otherwise choose the folder that contains `ProjectAlpha`. The save folder is found from the installation.
+2. **Mappings** (`.usmap`): the game stores its data without field names, and only the running game can give them.
+   "Install the generator in the game" downloads [RE-UE4SS](https://github.com/UE4SS-RE/RE-UE4SS) (latest experimental
+   release, checked against GitHub's SHA-256) and installs it with the DRDump mod. Under Proton, add the Steam launch
+   option `WINEDLLOVERRIDES="dwmapi=n,b" %command%`. Start the game and load a character: about 15 s later the file
+   appears and the app imports it. Then close the game and click "Remove UE4SS from the game" (it removes only what it
+   installed). One mappings file stays valid as long as the game's classes do not change.
+3. **Extraction** (about a minute): the bundled `dr-extract` reads the game's pak and writes the data to the app's
+   data folder. The pak is Oodle-compressed: the Oodle library is downloaded once from the
+   [OodleUE](https://github.com/WorkingRobot/OodleUE) mirror and checked against its SHA-256.
+
+The app's folders:
+
+| | Linux | Windows | macOS |
+|---|---|---|---|
+| Data (`game/<build>/`, `mappings/`, `history/`, `settings.json`) | `~/.local/share/dr-planner` | `%APPDATA%\dr-planner` | `~/Library/Application Support/dr-planner` |
+| Cache (`app.log`, `oodle/`) | `~/.cache/dr-planner` | `%LOCALAPPDATA%\dr-planner` | `~/Library/Caches/dr-planner` |
 
 ### How the installers are built
 
@@ -42,9 +62,13 @@ UI build and `cargo test --workspace`.
 
 ## Running the app from source
 
+    tools/extract/build-extractor.sh   # dr-extract sidecar (.NET 10 SDK, or Docker): Tauri needs it to build
     cd app && npm install
     npx tauri dev                 # desktop app (Tauri 2), hot reload
     npx tauri build --no-bundle   # release binary: target/release/dr-app
+
+Which data the app loads: `DR_PLANNER_ROOT` if set; in a debug build, this repository's `data/` when
+`tools/extract/extract.sh` filled it; else the data extracted for the installed game build; else the newest extraction.
 
 To run it in a browser (handy for headless tests), start the HTTP bridge and Vite:
 
@@ -59,7 +83,13 @@ Check the engine against the game from the command line:
 ## Layout
 
 - `tools/extract/extract.sh`: re-extracts everything into `data/extracted/` and `research/pseudo/`. Run it after every game patch.
-- `tools/extract/cue4parse/`: CUE4Parse exporter that converts `.uasset` files to JSON. It runs in the `dotnet/sdk:10.0` Docker image.
+- `tools/extract/cue4parse/`: `dr-extract`, built on CUE4Parse.
+  - `dr-extract game ...` is the app's extraction: it reads the pak directly and does what `extract.sh` and its Python
+    helpers do (same output, checked file by file).
+  - `dr-extract dumper install|remove ...` installs or removes the UE4SS mappings dumper.
+  - Without a subcommand it is the JSON/texture exporter `extract.sh` runs (in the `dotnet/sdk:10.0` Docker image).
+  - `tools/extract/build-extractor.sh [<runtime id>]` publishes it as one self-contained file into
+    `app/src-tauri/binaries/` (Tauri sidecar).
 - `tools/extract/kismet.py`: turns blueprint bytecode JSON into readable pseudo-code.
 - `tools/extract/skilltree.py`: writes `data/extracted/skill_tree.json`, the main skill tree layout (node positions, sizes, links)
   read from the `UI_SkillTree_S4realzies` widget.
@@ -74,8 +104,11 @@ Check the engine against the game from the command line:
   - `engine.rs` wires the character like the game does.
   - `catalog.rs` holds the UI data (attribute names/formats/icons, stats panel layout from `UI_Character`, affixes, modifiers).
   - `planner.rs` exposes the save and build views.
+  - `setup.rs` finds the game (Steam, Epic), its saves, the app's folders and the extracted builds.
 - `crates/dr-cli/`: `dr-cli` (stats, comparison with the game) and `serve` (HTTP bridge).
 - `app/`: the desktop UI (Tauri 2 + Svelte 5), which reproduces the in-game character screen.
+  `app/src-tauri/src/gamesetup.rs` runs the setup (extraction, dumper) and serves the extracted textures and fonts
+  (`drassets://` protocol).
 - `research/validation/`: in-game references (screenshots, and a live UE4SS dump of the attribute arrays).
 
 ## Regenerating the mappings after a patch

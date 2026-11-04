@@ -1,6 +1,9 @@
 //! Tauri backend. The stat engine is single-threaded (Rc-based VM), so worker
 //! threads own it and commands talk to them over channels. Every request is
-//! journaled to `~/.cache/dr-planner/app.log` (see dr_core::debuglog).
+//! journaled to `<cache dir>/dr-planner/app.log` (see dr_core::debuglog).
+//! The game data comes from the player's installation: see `gamesetup`.
+
+pub mod gamesetup;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::collections::HashMap;
@@ -30,16 +33,16 @@ enum Req {
     SetLanguage(String, Reply<Catalog>),
     /// Snapshots every character whose save changed; returns the keys that got a new entry.
     HistoryCapture(Reply<Vec<String>>),
+    /// Reloads the game data (after an extraction), in the current language.
+    Reload(Reply<()>),
 }
 
 /// Main worker (interactive calls) and a second one for the slower impact analysis and the
 /// history captures, so recomputing stats never waits behind them.
 struct Worker(Mutex<Sender<Req>>, Mutex<Sender<Req>>);
 
-/// Folder holding `data/` (extracted game data and assets).
-fn data_root() -> PathBuf {
-    std::env::var_os("DR_PLANNER_ROOT").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
-}
+/// Error of every call that needs game data while none is extracted (the UI shows the setup screen).
+const NO_DATA: &str = "game data not extracted yet";
 
 fn ms(t: Instant) -> f64 {
     t.elapsed().as_secs_f64() * 1000.0
@@ -67,17 +70,18 @@ fn err(e: anyhow::Error) -> String {
 /// (the planner borrows it): each language is loaded at most once per worker.
 fn load_language(name: &str, lang: &str, cache: &mut HashMap<String, &'static GameData>) -> Result<(Catalog, Planner<'static>), String> {
     let t = Instant::now();
+    let root = gamesetup::data_root().ok_or(NO_DATA)?;
     let gd = match cache.get(lang) {
         Some(gd) => *gd,
         None => {
-            let gd: &'static GameData = Box::leak(Box::new(GameData::load(&data_root(), lang).map_err(err)?));
+            let gd: &'static GameData = Box::leak(Box::new(GameData::load(&root, lang).map_err(err)?));
             cache.insert(lang.to_string(), gd);
             gd
         }
     };
     let catalog = Catalog::build(gd).map_err(err)?;
     let planner = Planner::new(gd, &catalog).map_err(err)?;
-    debuglog::info(name, &format!("game data ({lang}) loaded in {:.0} ms (build {}, root {})", ms(t), catalog.build, data_root().display()));
+    debuglog::info(name, &format!("game data ({lang}) loaded in {:.0} ms (build {}, root {})", ms(t), catalog.build, root.display()));
     Ok((catalog, planner))
 }
 
@@ -85,14 +89,15 @@ fn spawn_worker(name: &'static str) -> Sender<Req> {
     let (tx, rx) = channel::<Req>();
     thread::spawn(move || {
         let mut cache = HashMap::new();
-        let (mut catalog, mut planner) = match load_language(name, "fr", &mut cache) {
+        let mut lang = "fr".to_string();
+        let (mut catalog, mut planner) = match load_language(name, &lang, &mut cache) {
             Ok((c, p)) => (Some(c), Some(p)),
             Err(e) => {
                 debuglog::error(name, &format!("loading game data failed: {e}"));
                 (None, None)
             }
         };
-        let missing = || "game data not loaded (run tools/extract/extract.sh)".to_string();
+        let missing = || NO_DATA.to_string();
         let mut opened = String::new();
         let mut seen = HashMap::new();
         for req in rx {
@@ -146,14 +151,27 @@ fn spawn_worker(name: &'static str) -> Sender<Req> {
                     }
                     let _ = r.send(res);
                 }
-                Req::SetLanguage(lang, r) => {
-                    let res = guarded(name, &format!("language {lang}"), || load_language(name, &lang, &mut cache));
+                Req::SetLanguage(l, r) => {
+                    let res = guarded(name, &format!("language {l}"), || load_language(name, &l, &mut cache));
                     let reply = res.map(|(c, p)| {
                         catalog = Some(c.clone());
                         planner = Some(p);
+                        lang = l;
                         // The new planner has no character: the UI reopens its save.
                         opened.clear();
                         c
+                    });
+                    let _ = r.send(reply);
+                }
+                Req::Reload(r) => {
+                    // New data: the cached languages are from the previous extraction.
+                    cache.clear();
+                    let res = guarded(name, "reload game data", || load_language(name, &lang, &mut cache));
+                    let reply = res.map(|(c, p)| {
+                        catalog = Some(c);
+                        planner = Some(p);
+                        opened.clear();
+                        seen.clear();
                     });
                     let _ = r.send(reply);
                 }
@@ -240,6 +258,19 @@ fn history(save: String) -> Result<Vec<Snapshot>, String> {
     history::load(&history::save_key(save.as_ref())).map_err(err)
 }
 
+/// Extracts the game data from the installation in use, then reloads both workers on it.
+#[tauri::command]
+async fn extract(app: tauri::AppHandle, w: tauri::State<'_, Worker>) -> Result<String, String> {
+    use tauri::Emitter;
+    let run = move || gamesetup::run_extraction(|v| {
+        let _ = app.emit("extract-progress", v);
+    });
+    let root = tauri::async_runtime::spawn_blocking(run).await.map_err(|e| e.to_string())??;
+    send(&w.1, Req::Reload)?;
+    send(&w.0, Req::Reload)?;
+    Ok(root.display().to_string())
+}
+
 /// Frontend errors and notable events go to the same journal.
 #[tauri::command]
 fn log_event(level: String, source: String, message: String) {
@@ -260,7 +291,7 @@ fn debug_info() -> DebugInfo {
     DebugInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
         log_path: debuglog::path().display().to_string(),
-        data_root: data_root().display().to_string(),
+        data_root: gamesetup::data_root().map(|p| p.display().to_string()).unwrap_or_default(),
         save_dir: default_save_dir().display().to_string(),
         recent: debuglog::tail(200),
     }
@@ -269,11 +300,32 @@ fn debug_info() -> DebugInfo {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     debuglog::install_panic_hook("app");
-    debuglog::info("app", &format!("start v{} ({}), data {}", env!("CARGO_PKG_VERSION"), if cfg!(debug_assertions) { "debug" } else { "release" }, data_root().display()));
+    gamesetup::init_root();
+    let root = gamesetup::data_root().map(|p| p.display().to_string()).unwrap_or_else(|| "none".into());
+    debuglog::info("app", &format!("start v{} ({}), data {root}", env!("CARGO_PKG_VERSION"), if cfg!(debug_assertions) { "debug" } else { "release" }));
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .register_uri_scheme_protocol("drassets", |_ctx, request| gamesetup::serve_asset(request))
         .manage(Worker(Mutex::new(spawn_worker("main")), Mutex::new(spawn_worker("analysis"))))
-        .invoke_handler(tauri::generate_handler![catalog, saves, open_save, compute, analyze, set_language, history_capture, history, log_event, debug_info])
+        .invoke_handler(tauri::generate_handler![
+            catalog,
+            saves,
+            open_save,
+            compute,
+            analyze,
+            set_language,
+            history_capture,
+            history,
+            log_event,
+            debug_info,
+            extract,
+            gamesetup::setup_status,
+            gamesetup::set_game_dir,
+            gamesetup::set_save_dir,
+            gamesetup::import_mappings,
+            gamesetup::dumper_install,
+            gamesetup::dumper_remove,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

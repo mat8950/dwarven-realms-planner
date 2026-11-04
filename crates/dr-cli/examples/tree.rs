@@ -1,6 +1,6 @@
 //! Skill tree check: catalog summary, then the stats without the save's tree nodes.
 fn main() -> anyhow::Result<()> {
-    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = std::env::var_os("DR_PLANNER_ROOT").map(std::path::PathBuf::from).unwrap_or_else(|| std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
     let gd = dr_core::gamedata::GameData::load(&root, "fr")?;
     let cat = dr_core::catalog::Catalog::build(&gd)?;
     let t = &cat.skill_tree;

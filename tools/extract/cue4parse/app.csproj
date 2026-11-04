@@ -1,4 +1,30 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><Nullable>disable</Nullable><NoWarn>NU1902;NU1903</NoWarn><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
-  <ItemGroup><PackageReference Include="CUE4Parse" Version="*" /><PackageReference Include="CUE4Parse-Conversion" Version="*" /><PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.9" /><PackageReference Include="Newtonsoft.Json" Version="13.0.4" /></ItemGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>dr-extract</AssemblyName>
+    <RootNamespace>DrExtract</RootNamespace>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>NU1902;NU1903</NoWarn>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Published as one self-contained file per platform: the app runs it as a Tauri sidecar. -->
+    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
+    <PublishSingleFile Condition="'$(RuntimeIdentifier)' != ''">true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CUE4Parse" Version="1.2.2.202610" />
+    <PackageReference Include="CUE4Parse-Conversion" Version="1.2.2.202610" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="2.88.9" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The UE4SS mod that writes the mappings, installed by `dr-extract dumper install`. -->
+    <EmbeddedResource Include="../ue4ss-dump/DRDump/Scripts/main.lua" LogicalName="DRDump.main.lua" />
+  </ItemGroup>
 </Project>

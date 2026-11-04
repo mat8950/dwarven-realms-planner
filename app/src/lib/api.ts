@@ -1,9 +1,10 @@
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { debug } from './debug.svelte'
 import type { Probe } from './conditions'
-import type { BuildInput, Catalog, CharacterView, Impact, SaveEntry, Snapshot, StatsView } from './types'
+import type { BuildInput, Catalog, CharacterView, ExtractProgress, Impact, SaveEntry, SetupStatus, Snapshot, StatsView } from './types'
 
-const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 /** Tauri command, or the HTTP bridge (`cargo run --bin serve`) when running in a browser.
  *  Every call is timed; failures are journaled with the command name. */
@@ -39,4 +40,15 @@ export const api = {
   /** Snapshots every character whose save changed; returns their history keys. */
   historyCapture: () => call<string[]>('history_capture'),
   history: (save: string) => call<Snapshot[]>('history', { save }),
+  // Game data setup. Only the desktop app has it: the HTTP bridge serves the repository's data.
+  setupStatus: () => (inTauri ? call<SetupStatus>('setup_status') : Promise.resolve(null)),
+  setGameDir: (dir: string | null) => call<void>('set_game_dir', { dir }),
+  setSaveDir: (dir: string | null) => call<void>('set_save_dir', { dir }),
+  importMappings: (path: string) => call<string>('import_mappings', { path }),
+  /** Installs RE-UE4SS with the DRDump mod in the game (it writes the mappings), or removes it. */
+  dumperInstall: () => call<void>('dumper_install'),
+  dumperRemove: () => call<void>('dumper_remove'),
+  /** Extracts the game data from the installation in use and reloads it; returns the data folder. */
+  extract: () => call<string>('extract'),
+  onExtractProgress: (cb: (p: ExtractProgress) => void) => (inTauri ? listen<ExtractProgress>('extract-progress', (e) => cb(e.payload)) : Promise.resolve(() => {})),
 }
