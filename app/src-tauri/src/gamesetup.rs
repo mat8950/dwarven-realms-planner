@@ -79,10 +79,12 @@ pub fn setup_status() -> SetupStatus {
     let dumper_installed = install.as_ref().is_some_and(|g| g.dir.join("ProjectAlpha/Binaries/Win64/dr-planner-ue4ss.json").is_file());
     SetupStatus {
         installs: setup::find_installs(),
-        up_to_date: match (&install, &data_build) {
-            (Some(g), Some(b)) => &g.build == b,
-            _ => false,
-        },
+        // Same game build, and data laid out the way this version of the planner reads it.
+        up_to_date: root.as_deref().is_some_and(|r| setup::data_format(r) >= setup::DATA_FORMAT)
+            && match (&install, &data_build) {
+                (Some(g), Some(b)) => &g.build == b,
+                _ => false,
+            },
         dumped: install.as_ref().map(|g| setup::dumped_mappings(&g.dir).iter().map(|p| show(p)).collect()).unwrap_or_default(),
         manual_dir: settings.game_dir.as_deref().map(show),
         save_dir: settings.save_dir().as_deref().map(show),

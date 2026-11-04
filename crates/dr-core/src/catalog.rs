@@ -247,11 +247,17 @@ fn skill_sets(gd: &GameData) -> Result<Vec<SkillSet>> {
         // The elven tree (in game: "Un-Learn Elven Tree"), stored in a crafting table.
         ("Localized/DT_Skills_Crafting_S24", "Elven", None),
     ];
+    // Rows the elven tree shows (elven_tree.json): its table also holds old skills the game no longer offers.
+    let elven: Option<std::collections::HashSet<String>> = fs::read_to_string(gd.root.join("data/extracted/elven_tree.json"))
+        .ok()
+        .and_then(|t| serde_json::from_str::<Json>(&t).ok())
+        .map(|v| v["slots"].as_array().into_iter().flatten().filter_map(|s| s["row"].as_str().map(str::to_string)).collect());
     let mut out = Vec::new();
     for (file, name, st) in sets {
         let Ok(rows) = table_rows(gd, &format!("{dir}/{file}.json")) else { continue };
         let skills = rows
             .into_iter()
+            .filter(|(row, _)| name != "Elven" || elven.as_ref().is_none_or(|e| e.contains(row.as_str())))
             .map(|(row, r)| {
                 let mut attributes: Vec<(String, f64)> = Vec::new();
                 let a = &r["Attribute"];

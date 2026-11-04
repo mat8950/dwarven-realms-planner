@@ -93,6 +93,11 @@ Check the engine against the game from the command line:
 - `tools/extract/kismet.py`: turns blueprint bytecode JSON into readable pseudo-code.
 - `tools/extract/skilltree.py`: writes `data/extracted/skill_tree.json`, the main skill tree layout (node positions, sizes, links)
   read from the `UI_SkillTree_S4realzies` widget.
+- `tools/extract/elventree.py`: writes `data/extracted/elven_tree.json`, the skills of the elven tree (the elven harp,
+  `UI_CraftingSkillTree_S24`). Its table `DT_Skills_Crafting_S24` also holds 5 old skills the game no longer shows
+  (Lucky, Mule, Very Very Lucky, Greater Mule `Luck_Inventory2`, Spirit of the Hermonyan Explorer): the app hides them.
+- `data/extracted/FORMAT`: layout version of the extracted data. The app asks for a new extraction when it is older
+  than `dr_core::setup::DATA_FORMAT`.
 - `tools/extract/ue4ss-dump/DRDump/`: UE4SS Lua mod that writes the `.usmap` mappings.
 - `data/mappings/*.usmap`: mappings for the current game build. Without them no table can be read.
 - `data/extracted/tables/`: DataTables, string tables and `.locres` files (en, fr), as JSON.

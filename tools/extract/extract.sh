@@ -89,11 +89,14 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -e DOTNET_CLI_HOME=/tmp 
     dotnet /w/exporter/dr-extract.dll /w/raw/ProjectAlpha /w/montjson @/w/montage-filters.txt json
 python3 -I "$ROOT/tools/extract/anims.py" "$WORK/montjson" "$ROOT/data/extracted/attack_anims.json"
 
-echo "== skill tree layout"
-run_export ui "/UI_SkillTree_S4realzies."
+echo "== skill tree layout and elven tree"
+run_export ui "/UI_SkillTree_S4realzies.,/UI_CraftingSkillTree_S24."
 python3 -I "$ROOT/tools/extract/skilltree.py" \
     "$WORK/ui/ProjectAlpha/Content/EasySurvivalRPG/Blueprints/UserInterface/SkillTree_S3/UI_SkillTree_S4realzies.json" \
     "$ROOT/data/extracted/skill_tree.json"
+python3 -I "$ROOT/tools/extract/elventree.py" \
+    "$WORK/ui/ProjectAlpha/Content/EasySurvivalRPG/Blueprints/DataTables/StanceSkills/UI_CraftingSkillTree_S24.json" \
+    "$ROOT/data/extracted/elven_tree.json"
 
 echo "== decompiling blueprints"
 mkdir -p "$ROOT/research/pseudo"
@@ -126,5 +129,6 @@ for f in CormorantUnicase-Bold MasonSanAltBol Petrona-VariableFont_wght Alegreya
     "$BIN/bin/repak" get "$PAK" "ProjectAlpha/Content/EasySurvivalRPG/Textures/Fonts/$f.ufont" > "$ROOT/data/assets/fonts/$f.ttf"
 done
 
+echo 2 > "$ROOT/data/extracted/FORMAT"   # GameExport.Format / dr_core::setup::DATA_FORMAT
 grep -E '"buildid"' "$GAME/../../appmanifest_2015240.acf" | tr -d '\t"' | sed 's/buildid/build /' > "$ROOT/data/extracted/BUILD"
 echo "== done: $(cat "$ROOT/data/extracted/BUILD")"

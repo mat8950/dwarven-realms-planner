@@ -315,6 +315,15 @@ pub fn game_data_root(build: &str) -> PathBuf {
     data_dir().join("game").join(safe)
 }
 
+/// Layout version of the extracted data (`data/extracted/FORMAT`, written by dr-extract and extract.sh).
+/// Data below it is extracted again. 2: elven_tree.json.
+pub const DATA_FORMAT: u32 = 2;
+
+/// Layout version of the data in `root` (1 when the file is missing).
+pub fn data_format(root: &Path) -> u32 {
+    fs::read_to_string(root.join("data/extracted/FORMAT")).ok().and_then(|t| t.trim().parse().ok()).unwrap_or(1)
+}
+
 /// Whether `root` holds a complete extraction (`BUILD` is written last).
 pub fn data_ready(root: &Path) -> bool {
     root.join("data/extracted/BUILD").is_file() && root.join("data/assets").is_dir()

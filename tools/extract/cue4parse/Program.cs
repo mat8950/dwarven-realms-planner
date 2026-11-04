@@ -100,6 +100,10 @@ static class GameExport {
     "/BP_HotbarComponent.", "/BP_PlayerController.", "/BP_PotionManager.", "/UI_CharInfo_Cards_Grid.", "/BP_RuptureOrbsComponent.",
   ];
   const string SkillTreeWidget = "EasySurvivalRPG/Blueprints/UserInterface/SkillTree_S3/UI_SkillTree_S4realzies.uasset";
+  // The elven tree (the elven harp): its slots name the DT_Skills_Crafting_S24 rows the game offers.
+  const string ElvenTreeWidget = "EasySurvivalRPG/Blueprints/DataTables/StanceSkills/UI_CraftingSkillTree_S24.uasset";
+  /// Version of the extracted data's layout. dr-core asks for a new extraction below its DATA_FORMAT.
+  const int Format = 2;
   static readonly string[] AnimFolders = ["Combat_Animations/WeaponBasicAttacks/", "UnarmedAutoAttacks/"];
   // Whole texture folders: UI chrome (slot silhouettes, rarity backgrounds, frames) and item modifier icons.
   static readonly string[] TextureFolders = ["EasySurvivalRPG/Textures/UI/", "EasySurvivalRPG/Textures/Fonts/", "EasySurvivalRPG/Blueprints/Equipment_Modifiers/"];
@@ -158,6 +162,8 @@ static class GameExport {
 
       Step("skill_tree");
       Write(Path.Combine(extracted, "skill_tree.json"), SkillTree(Exports(provider, Content + SkillTreeWidget)));
+      Step("elven_tree");
+      Write(Path.Combine(extracted, "elven_tree.json"), ElvenTree(Exports(provider, Content + ElvenTreeWidget)));
 
       var textures = TexturePaths(tables, keys, Rel);
       Each(textures, "textures", k => {
@@ -179,6 +185,7 @@ static class GameExport {
         else Warn($"font not found: {k}");
       }
 
+      File.WriteAllText(Path.Combine(extracted, "FORMAT"), $"{Format}\n");
       File.WriteAllText(Path.Combine(extracted, "BUILD"), $"build {build}\n");
       if (Directory.Exists(outRoot)) Directory.Delete(outRoot, true);
       Directory.CreateDirectory(Path.GetDirectoryName(outRoot));
@@ -322,6 +329,25 @@ static class GameExport {
     }
     if (nodes.Count == 0) throw new InvalidDataException("no skill tree node found in UI_SkillTree_S4realzies");
     return new JObject { ["nodes"] = nodes };
+  }
+
+  /// Elven tree slots (port of elventree.py): each UI_SkillSlot names its skill row; its CanvasPanelSlot (found by
+  /// content, slot names repeat) gives its position. The table has rows the tree does not show.
+  static JObject ElvenTree(JArray objs) {
+    var slots = new Dictionary<string, JObject>();
+    foreach (var o in objs.OfType<JObject>().Where(o => o["Type"]?.ToString() == "CanvasPanelSlot")) {
+      var content = At(o, "Properties", "Content", "ObjectName")?.ToString() ?? "";
+      slots[content.Split('.')[^1].TrimEnd('\'')] = o["Properties"] as JObject ?? [];
+    }
+    var outSlots = new JArray();
+    foreach (var o in objs.OfType<JObject>().Where(o => o["Type"]?.ToString() == "UI_SkillSlot_C")) {
+      var row = At(o, "Properties", "SkillHandle", "RowName")?.ToString();
+      if (string.IsNullOrEmpty(row) || row == "None") continue;
+      var off = At(slots.GetValueOrDefault(o["Name"]?.ToString() ?? ""), "LayoutData", "Offsets") as JObject ?? [];
+      outSlots.Add(new JObject { ["id"] = o["Name"], ["row"] = row, ["x"] = Num(off["Left"], 0.0), ["y"] = Num(off["Top"], 0.0) });
+    }
+    if (outSlots.Count == 0) throw new InvalidDataException("no skill slot found in UI_CraftingSkillTree_S24");
+    return new JObject { ["slots"] = outSlots };
   }
 
   /// The textures the planner UI shows (port of textures.py): icons of item attributes, abilities, weapon
