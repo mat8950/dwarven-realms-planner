@@ -61,6 +61,16 @@ fn main() -> Result<()> {
                     let probes: Vec<dr_core::planner::Probe> = serde_json::from_value(args["probes"].clone())?;
                     serde_json::to_value(planner.analyze(&serde_json::from_value::<BuildInput>(args["build"].clone())?, &probes)?)?
                 }
+                "inventory" => serde_json::to_value(planner.inventory(args["save"].as_str().unwrap_or("").as_ref())?)?,
+                "evaluate_items" => {
+                    let save = args["save"].as_str().unwrap_or("").to_string();
+                    if save != opened {
+                        planner.open(save.as_ref())?;
+                        opened = save;
+                    }
+                    let items: Vec<dr_core::planner::Candidate> = serde_json::from_value(args["items"].clone())?;
+                    serde_json::to_value(planner.evaluate_items(&serde_json::from_value::<BuildInput>(args["build"].clone())?, &items)?)?
+                }
                 "set_language" => {
                     (catalog, planner) = load(args["lang"].as_str().unwrap_or("fr"))?;
                     opened.clear();

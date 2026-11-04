@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
-use crate::catalog::{AbilityInfo, AttackInfo, BasicAttack, Catalog, asset_path, table_rows};
+use crate::catalog::{AbilityInfo, AttackInfo, BasicAttack, Catalog};
 use crate::engine::{Engine, Situation};
 use crate::gamedata::GameData;
 use crate::save;
@@ -313,19 +313,27 @@ pub struct Planner<'g> {
     engine: Engine<'g>,
     /// Original items, to reset slots the build does not override.
     original: (Vec<Value>, Option<Value>),
-    icons: HashMap<String, String>,
+    /// Names, icons and slots of DT_Items rows.
+    items_index: crate::inventory::ItemIndex,
+}
+
+/// An item to try in the build (`Planner::evaluate_items`): an inventory or stash item.
+#[derive(Deserialize, Clone, Debug)]
+pub struct Candidate {
+    pub row: String,
+    pub attributes: Vec<Attr>,
+    pub rarity: u8,
+    pub tier: i64,
+    pub hearts: i64,
+    /// `E_EquipmentSlot` value; `None` for a weapon.
+    pub slot: Option<u8>,
 }
 
 impl<'g> Planner<'g> {
     pub fn new(game: &'g GameData, catalog: &Catalog) -> Result<Planner<'g>> {
-        let mut icons = HashMap::new();
-        for (row, r) in table_rows(game, "EasySurvivalRPG/Blueprints/DataTables/DT_Items.json")? {
-            if let Some(p) = r["Icon"]["ObjectPath"].as_str() {
-                icons.insert(row, asset_path(p));
-            }
-        }
+        let items_index = crate::inventory::ItemIndex::new(game)?;
         let status_attributes = catalog.status_effects.iter().map(|e| (e.row.clone(), e.attributes.clone())).collect();
-        Ok(Planner { game, status_attributes, abilities: catalog.abilities.clone(), attacks: catalog.attacks.clone(), basic: catalog.basic_attacks.clone(), engine: Engine::new(game)?, original: (Vec::new(), None), icons })
+        Ok(Planner { game, status_attributes, abilities: catalog.abilities.clone(), attacks: catalog.attacks.clone(), basic: catalog.basic_attacks.clone(), engine: Engine::new(game)?, original: (Vec::new(), None), items_index })
     }
 
     pub fn open(&mut self, path: &Path) -> Result<CharacterView> {
@@ -370,7 +378,7 @@ impl<'g> Planner<'g> {
         };
         ItemView {
             slot,
-            icon: self.icons.get(&row).cloned(),
+            icon: self.items_index.icons.get(&row).cloned(),
             name: f("Name_").name().to_string(),
             rarity: f("Rarity").i64() as u8,
             tier: f("ItemTier").i64(),
@@ -444,6 +452,61 @@ impl<'g> Planner<'g> {
     /// For each probe, the relative change of every metric when `delta` of its tag is added to
     /// the build (as an extra flat bonus, like an affix). A probe with a `when` condition is
     /// measured with that game state active, against the build in the same state.
+    /// The inventory and stash tabs of the character whose save is `path`.
+    pub fn inventory(&self, path: &Path) -> Result<Vec<crate::inventory::Container>> {
+        self.items_index.read(path)
+    }
+
+    /// What each item would change if it replaced the one in its slot (a weapon: the weapon in hand,
+    /// and the stance follows it unless the build sets one). Impacts are relative to the build `b`.
+    pub fn evaluate_items(&mut self, b: &BuildInput, items: &[Candidate]) -> Result<Vec<Impact>> {
+        let mut situation = self.prepare(b)?;
+        let st0 = self.engine.compute(&situation)?;
+        situation.available_potions = Some(situation.available_potions.unwrap_or_else(|| self.engine.vm.get(self.engine.potions, "Max Potions").i64()));
+        let m0 = self.metrics(&st0);
+        let d0 = self.dps(&st0, &m0, situation.stance.unwrap_or(self.engine.default_stance));
+        let (items0, weapon0) = (self.engine.items.clone(), self.engine.weapon.clone());
+        let mut out = Vec::with_capacity(items.len());
+        let run = |this: &mut Self, c: &Candidate| -> Result<Impact> {
+            this.engine.items = items0.clone();
+            this.engine.weapon = weapon0.clone();
+            let item = this.engine.make_item(&c.row, &to_pairs(&c.attributes), c.rarity, c.tier, c.hearts)?;
+            let mut s = situation.clone();
+            match c.slot {
+                Some(slot) if (slot as usize) < this.engine.items.len() => this.engine.items[slot as usize] = item,
+                Some(slot) => bail!("no equipment slot {slot}"),
+                None => {
+                    if b.stance.is_none() {
+                        s.stance = Some(this.engine.item_stance(&item)?);
+                    }
+                    this.engine.weapon = Some(item);
+                }
+            }
+            this.engine.apply_items()?;
+            let st = this.engine.compute(&s)?;
+            let m = this.metrics(&st);
+            let d = this.dps(&st, &m, s.stance.unwrap_or(this.engine.default_stance));
+            Ok(impact(&c.row, 0.0, (&st0, &m0, &d0), (&st, &m, &d)))
+        };
+        let mut failed = None;
+        for c in items {
+            match run(self, c) {
+                Ok(i) => out.push(i),
+                Err(e) => {
+                    failed = Some(e.context(format!("item {}", c.row)));
+                    break;
+                }
+            }
+        }
+        self.engine.items = items0;
+        self.engine.weapon = weapon0;
+        self.engine.apply_items()?;
+        match failed {
+            Some(e) => Err(e),
+            None => Ok(out),
+        }
+    }
+
     pub fn analyze(&mut self, b: &BuildInput, probes: &[Probe]) -> Result<Vec<Impact>> {
         let mut situation = self.prepare(b)?;
         let first = self.engine.compute(&situation)?;

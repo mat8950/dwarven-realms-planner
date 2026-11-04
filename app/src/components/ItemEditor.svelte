@@ -14,7 +14,8 @@
   const affixes = $derived(indexed.filter((a) => !isMod(a.tag)))
   const mods = $derived(indexed.filter((a) => isMod(a.tag)))
   const info = (tag: string) => planner.catalog?.attributes[tag]
-  const look = $derived(item ? (sel === PET_SLOT ? PET : (RARITY[item.rarity] ?? RARITY[0])) : null)
+  const tried = $derived(typeof sel === 'number' ? planner.tried[sel] : undefined)
+  const look = $derived(item ? (sel === PET_SLOT ? PET : (RARITY[tried?.rarity ?? item.rarity] ?? RARITY[0])) : null)
   const slotName = $derived(
     sel === 'weapon' ? t('slot.weapon') : sel === null ? '' : slotLabel(planner.catalog?.slots.find((s) => s.value === sel)?.name ?? ''),
   )
@@ -111,12 +112,12 @@
     <header>
       <div class="ico" style:--frame={look.frame}>
         <img src={asset(look.bg)} alt="" />
-        {#if swapped?.icon ?? item.icon}<img class="fg" src={asset(swapped?.icon ?? item.icon)} alt="" />{/if}
+        {#if tried?.icon ?? swapped?.icon ?? item.icon}<img class="fg" src={asset(tried?.icon ?? swapped?.icon ?? item.icon)} alt="" />{/if}
       </div>
       <div class="head">
         <div class="slotname label">{slotName}</div>
-        <div class="name title" style:color={look.frame}>{swapped?.name ?? item.name}</div>
-        <div class="sub">{sel === PET_SLOT ? t('item.pet') : rarityName(item.rarity)}{item.tier ? ` · ${t('item.level', { n: item.tier })}` : ''}{swapped ? ` · ${stanceName(swapped.stance)}` : ''}</div>
+        <div class="name title" style:color={look.frame}>{tried?.name ?? swapped?.name ?? item.name}</div>
+        <div class="sub">{sel === PET_SLOT ? t('item.pet') : rarityName(tried?.rarity ?? item.rarity)}{(tried?.tier ?? item.tier) ? ` · ${t('item.level', { n: tried?.tier ?? item.tier })}` : ''}{tried ? ` · ${t('inv.tried')}` : ''}{swapped ? ` · ${stanceName(swapped.stance)}` : ''}</div>
       </div>
       <button class="btn ghost close" title={t('common.close')} onclick={() => (planner.selected = null)}>✕</button>
     </header>

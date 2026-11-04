@@ -8,7 +8,8 @@
   let { sel, item, slot, size = 84, tipLeft = false }: { sel: Selection; item: ItemView | null; slot?: SlotInfo; size?: number; tipLeft?: boolean } = $props()
 
   const isPet = $derived(sel === PET_SLOT)
-  const look = $derived(item?.row ? (isPet ? PET : (RARITY[item.rarity] ?? RARITY[0])) : null)
+  const tried = $derived(typeof sel === 'number' ? planner.tried[sel] : undefined)
+  const look = $derived(item?.row ? (isPet ? PET : (RARITY[tried?.rarity ?? item.rarity] ?? RARITY[0])) : null)
   const selected = $derived(planner.selected === sel)
   const edited = $derived(planner.isEdited(sel))
   let hover = $state(false)
@@ -16,8 +17,8 @@
   const attrs = $derived(planner.effAttrs(sel))
   const hearts = $derived(planner.heartsOf(sel))
   const swapped = $derived(sel === 'weapon' ? planner.weaponInfo() : null)
-  const icon = $derived(swapped?.icon ?? item?.icon)
-  const name = $derived(swapped?.name ?? item?.name ?? '')
+  const icon = $derived(tried?.icon ?? swapped?.icon ?? item?.icon)
+  const name = $derived(tried?.name ?? swapped?.name ?? item?.name ?? '')
   const info = (tag: string) => planner.catalog?.attributes[tag]
 </script>
 
@@ -34,7 +35,7 @@
   {#if item?.row && look}
     <img class="bg" src={asset(look.bg)} alt="" />
     {#if icon}<img class="icon" src={asset(icon)} alt={name} />{/if}
-    {#if item.tier > 0}<span class="lv">LV.{item.tier}</span>{/if}
+    {#if (tried?.tier ?? item.tier) > 0}<span class="lv">LV.{tried?.tier ?? item.tier}</span>{/if}
     {#if edited}<span class="edited" title={t('item.edited')}>✦</span>{/if}
     {#if hearts > 0}<span class="hearts" title={t('item.hearts', { n: hearts })}>♥{hearts}</span>{/if}
   {:else if slot?.silhouette}

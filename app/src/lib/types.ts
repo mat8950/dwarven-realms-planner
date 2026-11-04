@@ -373,3 +373,41 @@ export interface ExtractProgress {
   warn?: string
   error?: string
 }
+
+/** An item of the inventory or of a stash tab (dr_core::inventory::InvItem). */
+export interface InvItem {
+  index: number
+  row: string
+  name: string
+  icon: string | null
+  rarity: number
+  tier: number
+  hearts: number
+  amount: number
+  locked: boolean
+  attributes: Attr[]
+  /** Affix rows (DT_Base_Item_Attributes): inherent ones and each reroll pool. */
+  inherent: string[]
+  pools: string[][]
+  /** E_EquipmentSlot values the item fits. */
+  slots: number[]
+  weapon: boolean
+}
+
+export interface Container {
+  id: string
+  kind: 'inventory' | 'stash'
+  number: number
+  size: number
+  items: InvItem[]
+}
+
+/** An item tried in the build (dr_core::planner::Candidate). */
+export interface Candidate {
+  row: string
+  attributes: Attr[]
+  rarity: number
+  tier: number
+  hearts: number
+  slot: number | null
+}

@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { debug } from './debug.svelte'
 import type { Probe } from './conditions'
-import type { BuildInput, Catalog, CharacterView, ExtractProgress, Impact, SaveEntry, SetupStatus, Snapshot, StatsView } from './types'
+import type { BuildInput, Candidate, Catalog, CharacterView, Container, ExtractProgress, Impact, SaveEntry, SetupStatus, Snapshot, StatsView } from './types'
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
@@ -40,6 +40,10 @@ export const api = {
   /** Snapshots every character whose save changed; returns their history keys. */
   historyCapture: () => call<string[]>('history_capture'),
   history: (save: string) => call<Snapshot[]>('history', { save }),
+  /** Inventory, then stash tabs, of a character. */
+  inventory: (save: string) => call<Container[]>('inventory', { save }),
+  /** What each item would change if it replaced the one in its slot. */
+  evaluateItems: (save: string, build: BuildInput, items: Candidate[]) => call<Impact[]>('evaluate_items', { save, build, items }),
   // Game data setup. Only the desktop app has it: the HTTP bridge serves the repository's data.
   setupStatus: () => (inTauri ? call<SetupStatus>('setup_status') : Promise.resolve(null)),
   setGameDir: (dir: string | null) => call<void>('set_game_dir', { dir }),

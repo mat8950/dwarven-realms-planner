@@ -17,7 +17,8 @@ use dr_core::catalog::Catalog;
 use dr_core::debuglog;
 use dr_core::gamedata::GameData;
 use dr_core::history::{self, Snapshot};
-use dr_core::planner::{BuildInput, CharacterView, Impact, Planner, Probe, SaveEntry, StatsView, default_save_dir, list_saves};
+use dr_core::inventory::Container;
+use dr_core::planner::{BuildInput, Candidate, CharacterView, Impact, Planner, Probe, SaveEntry, StatsView, default_save_dir, list_saves};
 use serde::Serialize;
 
 type Reply<T> = Sender<Result<T, String>>;
@@ -35,6 +36,10 @@ enum Req {
     HistoryCapture(Reply<Vec<String>>),
     /// Reloads the game data (after an extraction), in the current language.
     Reload(Reply<()>),
+    /// Inventory and stash tabs of a save.
+    Inventory(String, Reply<Vec<Container>>),
+    /// What each item would change in the build; opens `save` first if it is not the loaded one.
+    EvaluateItems(String, BuildInput, Vec<Candidate>, Reply<Vec<Impact>>),
 }
 
 /// Main worker (interactive calls) and a second one for the slower impact analysis and the
@@ -163,6 +168,35 @@ fn spawn_worker(name: &'static str) -> Sender<Req> {
                     });
                     let _ = r.send(reply);
                 }
+                Req::Inventory(path, r) => {
+                    let t = Instant::now();
+                    let res = guarded(name, &format!("inventory {path}"), || match planner.as_ref() {
+                        Some(p) => p.inventory(path.as_ref()).map_err(err),
+                        None => Err(missing()),
+                    });
+                    if let Ok(c) = &res {
+                        debuglog::info(name, &format!("inventory: {} tabs, {} items in {:.0} ms", c.len(), c.iter().map(|c| c.items.len()).sum::<usize>(), ms(t)));
+                    }
+                    let _ = r.send(res);
+                }
+                Req::EvaluateItems(save, b, items, r) => {
+                    let t = Instant::now();
+                    let n = items.len();
+                    let res = guarded(name, "evaluate items", || match planner.as_mut() {
+                        Some(p) => {
+                            if opened != save {
+                                p.open(save.as_ref()).map_err(err)?;
+                                opened = save.clone();
+                            }
+                            p.evaluate_items(&b, &items).map_err(err)
+                        }
+                        None => Err(missing()),
+                    });
+                    if res.is_ok() {
+                        debuglog::info(name, &format!("evaluated {n} items in {:.0} ms", ms(t)));
+                    }
+                    let _ = r.send(res);
+                }
                 Req::Reload(r) => {
                     // New data: the cached languages are from the previous extraction.
                     cache.clear();
@@ -258,6 +292,16 @@ fn history(save: String) -> Result<Vec<Snapshot>, String> {
     history::load(&history::save_key(save.as_ref())).map_err(err)
 }
 
+#[tauri::command]
+async fn inventory(w: tauri::State<'_, Worker>, save: String) -> Result<Vec<Container>, String> {
+    send(&w.0, |r| Req::Inventory(save, r))
+}
+
+#[tauri::command]
+async fn evaluate_items(w: tauri::State<'_, Worker>, save: String, build: BuildInput, items: Vec<Candidate>) -> Result<Vec<Impact>, String> {
+    send(&w.1, |r| Req::EvaluateItems(save, build, items, r))
+}
+
 /// Extracts the game data from the installation in use, then reloads both workers on it.
 #[tauri::command]
 async fn extract(app: tauri::AppHandle, w: tauri::State<'_, Worker>) -> Result<String, String> {
@@ -319,6 +363,8 @@ pub fn run() {
             log_event,
             debug_info,
             extract,
+            inventory,
+            evaluate_items,
             gamesetup::setup_status,
             gamesetup::set_game_dir,
             gamesetup::set_save_dir,

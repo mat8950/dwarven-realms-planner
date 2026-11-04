@@ -7,7 +7,7 @@ import { isLootMod, modCondition, type Active, type Condition, type Probe } from
 import { autoKind, type Kind } from './history'
 import { probeKey, skillProbes, treeProbes } from './tree'
 import { storedMax } from './skills'
-import type { Attr, BuildInput, Catalog, CharacterView, DpsView, Impact, ItemView, Objective, SaveEntry, SetupStatus, Snapshot, StatsView, TreeOption, WeaponInfo } from './types'
+import type { Attr, BuildInput, Candidate, Catalog, CharacterView, Container, DpsView, Impact, InvItem, ItemView, Objective, SaveEntry, SetupStatus, Snapshot, StatsView, TreeOption, WeaponInfo } from './types'
 
 export type Selection = number | 'weapon' | null
 export type ForgeMode = 'current' | 'none' | 'max'
@@ -45,6 +45,8 @@ class Planner {
   weaponEdit = $state<Attr[] | null>(null)
   /** Replacement weapon (DT_Items row); keeps the current weapon's affixes unless edited. */
   weaponRow = $state<string | null>(null)
+  /** Inventory items tried in a slot (Inventory view): shown instead of the equipped item. */
+  tried = $state<Record<number, { name: string; icon: string | null; rarity: number; tier: number }>>({})
   /** Target gambler hearts per item (key = slot or "weapon"); missing = the item's own. */
   hearts = $state<Record<string, number>>({})
   forgeMode = $state<ForgeMode>('current')
@@ -114,6 +116,16 @@ class Planner {
   treeOpen = $state(false)
   /** Progression history view, and the open character's snapshots (oldest first). */
   historyOpen = $state(false)
+  /** Inventory and stash of the open character (Inventory view). */
+  inventoryOpen = $state(false)
+  inventory = $state<Container[]>([])
+  inventoryLoading = $state(false)
+  /** Gain of each equipment item on the objective if equipped (key = container id + index), and the
+   *  build it was measured on (gains are stale once the build changes). */
+  itemGains = $state<Record<string, { impact: Impact; slot: number | null }>>({})
+  itemGainsFor = $state('')
+  evaluating = $state(false)
+
   /** Game data setup (desktop app): installation, mappings, extracted data. Null in a browser. */
   setup = $state<SetupStatus | null>(null)
   setupOpen = $state(false)
@@ -250,6 +262,7 @@ class Planner {
 
   resetEdits() {
     this.edits = {}
+    this.tried = {}
     this.weaponEdit = null
     this.weaponRow = null
     this.hearts = {}
@@ -346,6 +359,8 @@ class Planner {
     } else if (sel !== null) {
       const { [sel]: _, ...rest } = this.edits
       this.edits = rest
+      const { [sel]: _t, ...tried } = this.tried
+      this.tried = tried
     }
     const { [key(sel)]: _h, ...hearts } = this.hearts
     this.hearts = hearts
@@ -528,6 +543,76 @@ class Planner {
     return boss ? (1 + g) * (1 + i.boss_mult) - 1 : g
   }
 
+  /** Gain of an impact on the chosen objective. */
+  gainOf(i: Impact): number | undefined {
+    return this.objectiveGain(i)
+  }
+
+  async loadInventory() {
+    if (!this.character) return
+    this.inventoryLoading = true
+    try {
+      this.inventory = await api.inventory(this.character.save)
+      this.itemGains = {}
+      this.itemGainsFor = ''
+    } catch (e) {
+      this.error = String(e)
+    } finally {
+      this.inventoryLoading = false
+    }
+  }
+
+  buildKey(): string {
+    return JSON.stringify(this.buildInput(true))
+  }
+
+  /** Measures every equipment item of the inventory and stash in its slot (rings: the better ring slot). */
+  async evaluateInventory() {
+    if (!this.character || this.evaluating) return
+    this.evaluating = true
+    try {
+      const cands: { key: string; c: Candidate }[] = []
+      for (const tab of this.inventory) {
+        for (const it of tab.items) {
+          const key = `${tab.id}#${it.index}`
+          const base = { row: it.row, attributes: $state.snapshot(it.attributes), rarity: it.rarity, tier: it.tier, hearts: it.hearts }
+          if (it.weapon) cands.push({ key, c: { ...base, slot: null } })
+          else for (const slot of it.slots) cands.push({ key, c: { ...base, slot } })
+        }
+      }
+      const build = this.buildInput(true)
+      const res = await api.evaluateItems(this.character.save, build, cands.map((x) => x.c))
+      const gains: Record<string, { impact: Impact; slot: number | null }> = {}
+      cands.forEach(({ key, c }, i) => {
+        const prev = gains[key]
+        if (!prev || (this.objectiveGain(res[i]) ?? -Infinity) > (this.objectiveGain(prev.impact) ?? -Infinity)) gains[key] = { impact: res[i], slot: c.slot }
+      })
+      this.itemGains = gains
+      this.itemGainsFor = JSON.stringify(build)
+    } catch (e) {
+      this.error = String(e)
+    } finally {
+      this.evaluating = false
+    }
+  }
+
+  /** Puts an inventory item in the build: its stats in its slot (a weapon also replaces the weapon row). */
+  tryItem(it: InvItem, slot: number | null) {
+    const attrs = $state.snapshot(it.attributes)
+    // The item's stats already include its own hearts: keep the forge factor at 1 (current hearts mode).
+    if (slot === null) {
+      this.weaponRow = it.row
+      this.weaponEdit = attrs
+      this.hearts = { ...this.hearts, weapon: this.originalHearts('weapon') }
+    } else {
+      this.edits = { ...this.edits, [slot]: attrs }
+      this.tried = { ...this.tried, [slot]: { name: it.name, icon: it.icon, rarity: it.rarity, tier: it.tier } }
+      this.hearts = { ...this.hearts, [slot]: this.originalHearts(slot) }
+    }
+    this.selected = slot === null ? 'weapon' : slot
+    this.inventoryOpen = false
+  }
+
   private objectiveGain(i: Impact): number | undefined {
     const o = this.objective
     if (o.kind === 'dps') return this.dpsGain(i, o.boss)
@@ -680,6 +765,7 @@ class Planner {
     // Builds live in $state: snapshot them (structuredClone cannot copy the proxies).
     const b = $state.snapshot(build)
     this.edits = b.edits
+    this.tried = {}
     this.weaponEdit = b.weapon
     this.weaponRow = b.weaponRow ?? null
     this.hearts = b.hearts ?? {}

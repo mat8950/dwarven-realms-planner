@@ -141,6 +141,20 @@ The game cooks assets with unversioned properties, so each new build needs a fre
   - `node app/tests/i18n-check.mjs` checks that every key used exists and that every dictionary is complete.
 - The default language is French. The choice made in the top bar is kept (`localStorage`).
 
+## Inventory and stash
+
+The "Inventaire" button lists the character's inventory (`<id>.sav`, `InventoryItems`) and the home fort stash tabs
+(world save `<id>_WRL.sav`, containers `BP_Container_Home_Fort_stash_..._Stash`, `_Stash1`...), laid out like in game.
+
+- **Wanted stats**: each generated item keeps its affix pools (`AffixesPool`: Inherent, Pool1-3, rows of
+  `DT_Base_Item_Attributes`), the affixes a reroll can give. An item scores the number of pools (1 to 3) that can roll a
+  wanted stat (blue, yellow, red). "My priorities" adds the 5 rollable stats that bring the most on the objective.
+- **Gain on the build**: each equipment item is made with the game's `Make Item Data by Handle` and tried in place of the
+  item in its slot (rings: the better ring slot; weapons: the weapon in hand, and the stance follows it unless the build
+  sets one). The gain is the change of the objective (~15 ms per item). "Try in the build" puts the item's stats in its
+  slot.
+- `cargo run --release -p dr-cli --example stash -- <save.sav> [n]` lists the tabs and evaluates the first n items.
+
 ## Progression history
 
 - **What a snapshot holds**: level, combat rating, DPS total (normal, boss/elite, dummy reading), every attribute,

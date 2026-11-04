@@ -2,6 +2,7 @@
   import { untrack } from 'svelte'
   import DebugPanel from './components/DebugPanel.svelte'
   import Setup from './components/Setup.svelte'
+  import Inventory from './components/Inventory.svelte'
   import HistoryView from './components/HistoryView.svelte'
   import ItemEditor from './components/ItemEditor.svelte'
   import SkillTree from './components/SkillTree.svelte'
@@ -37,6 +38,7 @@
   <DebugPanel />
   {#if planner.treeOpen && planner.character}<SkillTree />{/if}
   {#if planner.historyOpen}<HistoryView />{/if}
+  {#if planner.inventoryOpen && planner.character}<Inventory />{/if}
   {#if planner.setupOpen}<Setup />{/if}
   {#if planner.loading}
     <div class="splash title">{t('app.loading')}</div>

@@ -6,6 +6,7 @@ pub mod debuglog;
 pub mod engine;
 pub mod gamedata;
 pub mod history;
+pub mod inventory;
 pub mod natives;
 pub mod planner;
 pub mod save;
