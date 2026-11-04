@@ -33,15 +33,19 @@ export const LANGUAGES: Language[] = [
 const DICTS: Record<string, Partial<Record<Key, string>>> = { fr, en }
 const STORAGE_KEY = 'dr-planner.lang'
 
-/** The language chosen in the app, else French (the planner's reference language). */
+/** The language chosen in the app, else the system's when the game has it, else English. */
 function initial(): string {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved && LANGUAGES.some((l) => l.code === saved)) return saved
   } catch {
-    // storage unavailable: use the default
+    // storage unavailable: use the system language
   }
-  return 'fr'
+  for (const tag of navigator.languages ?? [navigator.language]) {
+    const code = tag.toLowerCase().split('-')[0]
+    if (LANGUAGES.some((l) => l.code === code)) return code
+  }
+  return 'en'
 }
 
 class I18n {

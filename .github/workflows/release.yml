@@ -1,14 +1,13 @@
-# Builds the installers on Windows, Linux and macOS (Apple Silicon).
-# - Push a tag "v*" (for example: git tag v0.1.0 && git push origin v0.1.0): the installers are
-#   attached to a draft release, to check and publish by hand.
-# - Run the workflow by hand (Actions tab, or `gh workflow run release.yml -f platform=windows`): the installers
-#   are only kept as workflow artifacts. `platform` builds one system only.
+# Builds the installers on Windows, Linux and macOS (Apple Silicon). Run it by hand (Actions tab, or gh):
+#   gh workflow run release.yml -f platform=linux -f tag=v0.1.0
+# - `platform` builds one system only, or all three.
+# - `tag`: the installers are attached to that release (a draft is created when missing), to check and
+#   publish by hand. Without it they are only kept as workflow artifacts.
+# The Windows installers are usually built locally instead: tools/package/release-windows.sh --release.
 # The tag must match the version in app/src-tauri/tauri.conf.json and Cargo.toml.
 name: Release
 
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
     inputs:
       platform:
@@ -16,6 +15,10 @@ on:
         type: choice
         options: [all, windows, linux, macos]
         default: all
+      tag:
+        description: Release to attach the installers to (for example v0.1.0); empty = artifacts only
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -85,8 +88,8 @@ jobs:
         with:
           projectPath: app
           args: ${{ matrix.args }}
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
-          releaseName: Dwarven Realms Planner ${{ github.ref_name }}
+          tagName: ${{ inputs.tag }}
+          releaseName: Dwarven Realms Planner ${{ inputs.tag }}
           releaseBody: |
             Installers for Windows (.msi, .exe), Linux (.deb, .rpm, .AppImage) and macOS Apple Silicon (.dmg).
 

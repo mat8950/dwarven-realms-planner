@@ -4,7 +4,7 @@
   import { open as pick } from '@tauri-apps/plugin-dialog'
   import { onDestroy } from 'svelte'
   import { api } from '../lib/api'
-  import { fmtNumber, t } from '../lib/i18n.svelte'
+  import { LANGUAGES, fmtNumber, i18n, t } from '../lib/i18n.svelte'
   import { planner } from '../lib/store.svelte'
   import type { ExtractProgress } from '../lib/types'
 
@@ -112,7 +112,13 @@
   <div class="panel">
     <header>
       <span class="title">{t('setup.title')}</span>
-      {#if s?.data_root && !busy}<button class="btn" onclick={close}>{t('common.close')}</button>{/if}
+      <span class="head-actions">
+        <!-- The game texts follow once the data is there (the planner loads them in the chosen language). -->
+        <select class="field" title={t('top.language')} value={i18n.lang} onchange={(e) => i18n.set(e.currentTarget.value)}>
+          {#each LANGUAGES as l (l.code)}<option value={l.code}>{l.name}</option>{/each}
+        </select>
+        {#if s?.data_root && !busy}<button class="btn" onclick={close}>{t('common.close')}</button>{/if}
+      </span>
     </header>
     <p class="intro">{t('setup.intro')}</p>
 
@@ -238,6 +244,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+  }
+  .head-actions {
+    display: flex;
+    gap: 8px;
   }
   .title {
     font-family: var(--font-title);

@@ -397,7 +397,7 @@ const en: Record<keyof typeof fr, string> = {
   'setup.dumperOptionMac': "CrossOver: in the bottle's Wine configuration, Libraries tab, add dwmapi as \"native, then builtin\".",
   'setup.copy': "Copy",
   'setup.copied': "Copied",
-  'setup.dumperRun': "Start the game and load a character. The file arrives about 15 seconds later.",
+  'setup.dumperRun': "Start the game (if it is already open, close it and start it again) and load a character. The file arrives about 15 seconds later.",
   'setup.dumperWaiting': "Waiting for the mappings file…",
   'setup.dumperFound': "Mappings file found and imported.",
   'setup.dumperRemoveHelp': "Then close the game, and remove UE4SS and the launch option:",

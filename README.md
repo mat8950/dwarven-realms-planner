@@ -14,7 +14,7 @@ The [releases](https://github.com/mat8950/dwarven-realms-planner/releases) have 
 
 | System | Files |
 |---|---|
-| Windows 10/11 (x64) | `.msi` or `-setup.exe` |
+| Windows 10/11 (x64) | `-setup.exe`, or the `.zip` (no installation, with a step-by-step README.txt) |
 | Linux (x64) | `.deb` (Debian, Ubuntu), `.rpm` (Fedora, openSUSE) or `.AppImage` (any distribution) |
 | macOS 11+ (Apple Silicon) | `.dmg` |
 
@@ -49,13 +49,20 @@ The app's folders:
 
 ### How the installers are built
 
-`.github/workflows/release.yml` builds them with [tauri-action](https://github.com/tauri-apps/tauri-action) on GitHub's
-Windows, Ubuntu 22.04 and macOS (arm64) runners:
+A release is the tag `v<version>`, with the version of `Cargo.toml` and `app/src-tauri/tauri.conf.json`. It starts
+as a draft: check it and publish it by hand.
 
-- Push a tag `v<version>`, for example `git tag v0.1.0 && git push origin v0.1.0`. The installers are attached to a
-  draft release. Check it and publish it by hand. The tag must match the version in `Cargo.toml` and
-  `app/src-tauri/tauri.conf.json`.
-- Or run the "Release" workflow by hand (Actions tab). The installers are then only kept as workflow artifacts.
+- **Windows, built on a Linux PC**: `tools/package/release-windows.sh --release` builds the installer (`-setup.exe`)
+  and the portable zip (with `tools/package/README-windows.txt`), then attaches them to the release. HEAD must be
+  committed and pushed. Without `--release` it only builds, into `target/windows/`. It needs the Rust target
+  `x86_64-pc-windows-msvc`, [cargo-xwin](https://github.com/rust-cross/cargo-xwin), and Docker: the extractor builds
+  in Docker when no .NET SDK is installed, and the installer uses `tools/package/bin/makensis` (NSIS in a Debian
+  container) when NSIS is not installed.
+- **Linux and macOS, on GitHub**: `.github/workflows/release.yml` builds them with
+  [tauri-action](https://github.com/tauri-apps/tauri-action) on Ubuntu 22.04 and macOS (arm64) runners. Run it by
+  hand: `gh workflow run release.yml -f platform=linux -f tag=v0.1.0`, the same with `platform=macos`. Without
+  `tag`, the installers are only kept as workflow artifacts. `platform=windows` builds the Windows installers there
+  too.
 
 `.github/workflows/ci.yml` checks every push: UI types (`npm run check`), translations (`tests/i18n-check.mjs`),
 UI build and `cargo test --workspace`.
@@ -139,7 +146,7 @@ The game cooks assets with unversioned properties, so each new build needs a fre
   - To add one, copy `en.ts`, translate it, and register it in `DICTS` in `app/src/lib/i18n.svelte.ts`.
   - `t('key', { name })` fills values. `{n|one|other}` picks a plural form with `Intl.PluralRules`.
   - `node app/tests/i18n-check.mjs` checks that every key used exists and that every dictionary is complete.
-- The default language is French. The choice made in the top bar is kept (`localStorage`).
+- On first start the planner uses the system language when the game has it, else English. The choice made in the top bar is kept (`localStorage`).
 
 ## Inventory and stash
 

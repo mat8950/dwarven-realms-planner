@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# makensis through Docker (Debian trixie's nsis package; Tauri's installer script needs NSIS 3.09 or
+# later): builds the Windows installer on Linux without installing NSIS. The repository and Tauri's
+# cache are mounted at the same paths, so the absolute paths in Tauri's installer script still work.
+set -euo pipefail
+image=dr-planner-nsis
+if ! docker image inspect "$image" >/dev/null 2>&1; then
+  docker build -q -t "$image" - >/dev/null <<'EOF'
+FROM debian:trixie-slim
+RUN apt-get update && apt-get install -y --no-install-recommends nsis && rm -rf /var/lib/apt/lists/*
+EOF
+fi
+repo=$(cd "$(dirname "$0")/../../.." && pwd)
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/tauri"
+mkdir -p "$cache"
+exec docker run --rm -u "$(id -u):$(id -g)" -v "$repo:$repo" -v "$cache:$cache" -w "$PWD" "$image" makensis "$@"

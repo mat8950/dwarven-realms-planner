@@ -396,7 +396,7 @@ const fr = {
   'setup.dumperOptionMac': "CrossOver : dans la configuration Wine de la bouteille, onglet Bibliothèques, ajoutez dwmapi en « native, puis intégrée ».",
   'setup.copy': "Copier",
   'setup.copied': "Copié",
-  'setup.dumperRun': "Lancez le jeu et chargez un personnage. Le fichier arrive une quinzaine de secondes plus tard.",
+  'setup.dumperRun': "Lancez le jeu (s'il est déjà ouvert, fermez-le et relancez-le) et chargez un personnage. Le fichier arrive une quinzaine de secondes plus tard.",
   'setup.dumperWaiting': "En attente du fichier de mappings…",
   'setup.dumperFound': "Fichier de mappings trouvé et importé.",
   'setup.dumperRemoveHelp': "Ensuite, fermez le jeu, retirez UE4SS et l'option de lancement :",
