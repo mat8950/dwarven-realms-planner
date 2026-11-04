@@ -26,9 +26,11 @@ const ABILITY_MOD = /^EasyRPG\.Attributes\.Abilities\.[^.]+\.Modifier\./
 export const isMod = (tag: string) => tag.startsWith(MOD_PREFIX) || ABILITY_MOD.test(tag)
 export const abilityOfMod = (tag: string) => (ABILITY_MOD.test(tag) ? tag.split('.Modifier.')[0] : null)
 
-/** URL of an extracted texture or font (`p` relative to data/assets). The desktop app serves them from the
- *  data extracted on this computer (`drassets` protocol); in a browser, Vite serves the repository's. */
-export const asset = (p: string | null | undefined) => (p ? (inTauri ? convertFileSrc(p, 'drassets') : '/' + p) : '')
+/** URL of an extracted texture or font (`p` relative to data/assets). A built app serves them from the data
+ *  extracted on this computer (`drassets` protocol). Under the Vite dev server (`tauri dev`, browser) the page is
+ *  http, from which WebKitGTK does not load custom schemes: Vite serves them (vite.config.ts). */
+const viaProtocol = inTauri && !import.meta.env.DEV
+export const asset = (p: string | null | undefined) => (p ? (viaProtocol ? convertFileSrc(p, 'drassets') : '/' + p) : '')
 
 /** The game's fonts (extracted with the textures), declared at run time since their URL depends on `asset`. */
 const FONTS: [family: string, file: string, weight: string][] = [

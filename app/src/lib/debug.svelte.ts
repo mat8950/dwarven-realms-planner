@@ -74,6 +74,20 @@ export const debug = new Debug()
 export function installGlobalHandlers() {
   window.addEventListener('error', (e) => debug.log('error', 'js', `${e.message} (${e.filename}:${e.lineno}:${e.colno})${e.error?.stack ? '\n' + e.error.stack : ''}`))
   window.addEventListener('unhandledrejection', (e) => debug.log('error', 'promise', String(e.reason?.stack ?? e.reason)))
+  // Images and other resources that fail to load (their error does not bubble): one line per URL.
+  const failed = new Set<string>()
+  window.addEventListener(
+    'error',
+    (e) => {
+      const el = e.target as HTMLImageElement | null
+      const url = el && el !== (window as unknown) && 'src' in el ? el.src : null
+      if (url && !failed.has(url) && failed.size < 20) {
+        failed.add(url)
+        debug.log('warn', 'asset', `failed to load ${url}`)
+      }
+    },
+    true,
+  )
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
       debug.open = !debug.open

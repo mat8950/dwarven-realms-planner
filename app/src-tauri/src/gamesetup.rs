@@ -255,7 +255,10 @@ pub fn serve_asset(request: tauri::http::Request<Vec<u8>>) -> tauri::http::Respo
         return not_found();
     }
     let Some(root) = data_root() else { return not_found() };
-    let Ok(bytes) = std::fs::read(root.join("data/assets").join(rel)) else { return not_found() };
+    let Ok(bytes) = std::fs::read(root.join("data/assets").join(rel)) else {
+        debuglog::write("WARN", "assets", &format!("not found: {}", rel.display()));
+        return not_found();
+    };
     let mime = match rel.extension().and_then(|e| e.to_str()).unwrap_or("") {
         "webp" => "image/webp",
         "png" => "image/png",

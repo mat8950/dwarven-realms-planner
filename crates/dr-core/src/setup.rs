@@ -117,7 +117,15 @@ fn windows_steam_path() -> Option<PathBuf> {
     if !cfg!(windows) {
         return None;
     }
-    let out = std::process::Command::new("reg").args(["query", r"HKCU\Software\Valve\Steam", "/v", "SteamPath"]).output().ok()?;
+    let mut cmd = std::process::Command::new("reg");
+    cmd.args(["query", r"HKCU\Software\Valve\Steam", "/v", "SteamPath"]);
+    #[cfg(windows)]
+    {
+        // The app has no console: do not flash one.
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    }
+    let out = cmd.output().ok()?;
     let text = String::from_utf8_lossy(&out.stdout);
     let line = text.lines().find(|l| l.contains("SteamPath"))?;
     let value = line.split("REG_SZ").nth(1)?.trim();
