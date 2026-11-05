@@ -18,6 +18,7 @@ use dr_core::debuglog;
 use dr_core::gamedata::GameData;
 use dr_core::history::{self, Snapshot};
 use dr_core::inventory::Container;
+use dr_core::session;
 use dr_core::planner::{BuildInput, Candidate, CharacterView, Impact, Planner, Probe, SaveEntry, StatsView, default_save_dir, list_saves};
 use serde::Serialize;
 
@@ -222,6 +223,9 @@ fn spawn_worker(name: &'static str) -> Sender<Req> {
                                 Ok(false) => {}
                                 Err(e) => debuglog::error(name, &format!("history of {}: {e:#}", s.path)),
                             }
+                            if let Err(e) = session::record(&path) {
+                                debuglog::error(name, &format!("session journal of {}: {e:#}", s.path));
+                            }
                         }
                         // Captures open saves: the next analysis reopens its own.
                         opened.clear();
@@ -292,6 +296,64 @@ fn history(save: String) -> Result<Vec<Snapshot>, String> {
     history::load(&history::save_key(save.as_ref())).map_err(err)
 }
 
+/// Session journal of the character whose save is `save` (oldest first), after recording the save if it changed.
+#[tauri::command]
+async fn session(save: String) -> Result<Vec<session::Snapshot>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = PathBuf::from(&save);
+        let t = Instant::now();
+        if session::record(&path).map_err(err)? {
+            debuglog::info("app", &format!("session: save read in {:.0} ms", ms(t)));
+        }
+        Ok(session::load(&history::save_key(&path)))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn prefs() -> std::collections::BTreeMap<String, String> {
+    dr_core::setup::prefs()
+}
+
+#[tauri::command]
+fn set_prefs(prefs: std::collections::BTreeMap<String, Option<String>>) -> Result<(), String> {
+    dr_core::setup::set_prefs(prefs).map_err(err)
+}
+
+#[tauri::command]
+fn run_book(save: String) -> session::RunBook {
+    session::book(&history::save_key(save.as_ref()))
+}
+
+#[tauri::command]
+fn set_run_note(save: String, id: String, note: session::RunNote) -> Result<session::RunBook, String> {
+    session::set_note(&history::save_key(save.as_ref()), &id, note).map_err(err)
+}
+
+#[tauri::command]
+fn set_farm_level(save: String, since: f64, level: i64) -> Result<session::RunBook, String> {
+    session::set_level(&history::save_key(save.as_ref()), since, level).map_err(err)
+}
+
+/// Journals every save the game writes, while the app runs: a run starts with three saves in about 20 seconds,
+/// and each overwrites the previous one, so the folder is checked every 2 seconds (file times only).
+fn spawn_session_watch() {
+    thread::spawn(|| {
+        let mut seen = HashMap::new();
+        loop {
+            for (path, r) in session::watch(&default_save_dir(), &mut seen) {
+                match r {
+                    Ok(true) => debuglog::info("session", &format!("journaled {}", path.display())),
+                    Ok(false) => {}
+                    Err(e) => debuglog::error("session", &format!("{}: {e:#}", path.display())),
+                }
+            }
+            thread::sleep(std::time::Duration::from_secs(2));
+        }
+    });
+}
+
 #[tauri::command]
 async fn inventory(w: tauri::State<'_, Worker>, save: String) -> Result<Vec<Container>, String> {
     send(&w.0, |r| Req::Inventory(save, r))
@@ -345,6 +407,7 @@ fn debug_info() -> DebugInfo {
 pub fn run() {
     debuglog::install_panic_hook("app");
     gamesetup::init_root();
+    spawn_session_watch();
     let root = gamesetup::data_root().map(|p| p.display().to_string()).unwrap_or_else(|| "none".into());
     debuglog::info("app", &format!("start v{} ({}), data {root}", env!("CARGO_PKG_VERSION"), if cfg!(debug_assertions) { "debug" } else { "release" }));
     tauri::Builder::default()
@@ -360,6 +423,12 @@ pub fn run() {
             set_language,
             history_capture,
             history,
+            session,
+            prefs,
+            set_prefs,
+            run_book,
+            set_run_note,
+            set_farm_level,
             log_event,
             debug_info,
             extract,

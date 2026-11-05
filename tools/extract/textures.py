@@ -42,14 +42,16 @@ for f in sorted((tables / "EasySurvivalRPG/Blueprints/DataTables/StanceSkills").
     icons(rows(f.relative_to(tables)), wanted)
 icons(rows("EasySurvivalRPG/Blueprints/DataTables/StanceSkills/Localized/DT_Skills_Crafting_S24.json"), wanted)
 icons(rows("EasySurvivalRPG/Blueprints/DataTables/LocalizedDataTables/DT_StatusEffects.json"), wanted)
+icons(rows("EasySurvivalRPG/Blueprints/Zones/Fortune/Data/DT_RuptureFortunes.json"), wanted)
 for name, row in rows("EasySurvivalRPG/Blueprints/DataTables/DT_Items.json").items():
     tags = json.dumps({k: v for k, v in row.items() if k.startswith("ItemTags")})
-    if "Items.Equipment" in tags or "Items.Weapon" in tags:
+    if "Items.Equipment" in tags or "Items.Weapon" in tags or "Items.Resource" in tags:
         icons(row, wanted)
 
 out = set()
 for p in wanted:
-    base = "ProjectAlpha/Content/" + p.split(".")[0].removeprefix("/Game/")
+    # `/Game/A/B.B`, or `ProjectAlpha/Content/A/B.0` for assets inside the exported folders.
+    base = "ProjectAlpha/Content/" + p.split(".")[0].removeprefix("/Game/").removeprefix("ProjectAlpha/Content/")
     for ext in (".uasset", ".uexp", ".ubulk"):
         if base + ext in pak:
             out.add(base + ext)

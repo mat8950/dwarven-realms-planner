@@ -675,7 +675,7 @@ dependencies = [
 
 [[package]]
 name = "dr-app"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "dr-core",
@@ -688,7 +688,7 @@ dependencies = [
 
 [[package]]
 name = "dr-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "dr-core",
@@ -698,7 +698,7 @@ dependencies = [
 
 [[package]]
 name = "dr-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "dirs",

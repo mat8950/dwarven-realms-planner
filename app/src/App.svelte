@@ -4,6 +4,7 @@
   import Setup from './components/Setup.svelte'
   import Inventory from './components/Inventory.svelte'
   import HistoryView from './components/HistoryView.svelte'
+  import SessionView from './components/SessionView.svelte'
   import ItemEditor from './components/ItemEditor.svelte'
   import SkillTree from './components/SkillTree.svelte'
   import Paperdoll from './components/Paperdoll.svelte'
@@ -14,6 +15,15 @@
   import { planner } from './lib/store.svelte'
 
   planner.init()
+
+  // The objective is kept between sessions.
+  $effect(() => {
+    try {
+      localStorage.setItem('dr-planner.objective', JSON.stringify(planner.objective))
+    } catch {
+      // no storage: the choice lasts for this session
+    }
+  })
 
   // Recompute whenever the build or the situation changes (debounced).
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -39,6 +49,7 @@
   {#if planner.treeOpen && planner.character}<SkillTree />{/if}
   {#if planner.historyOpen}<HistoryView />{/if}
   {#if planner.inventoryOpen && planner.character}<Inventory />{/if}
+  {#if planner.sessionOpen && planner.character}<SessionView />{/if}
   {#if planner.setupOpen}<Setup />{/if}
   {#if planner.loading}
     <div class="splash title">{t('app.loading')}</div>

@@ -3,42 +3,58 @@
   // - wanted stats: each item's reroll pools (Pool1-3) list the affixes a reroll can give; an item
   //   scores the number of pools that can roll a wanted stat (1, 2 or 3);
   // - the build: each equipment item measured in its slot by the engine, gain on the objective.
+  import { onDestroy } from 'svelte'
   import { formatValue } from '../lib/format'
   import { RARITY, asset } from '../lib/game'
-  import { rarityName, slotName, t } from '../lib/i18n.svelte'
+  import { fmtDate, rarityName, slotName, t } from '../lib/i18n.svelte'
   import { planner } from '../lib/store.svelte'
   import type { InvItem } from '../lib/types'
   import ImpactBadge from './ImpactBadge.svelte'
   import ObjectiveSelect from './ObjectiveSelect.svelte'
 
-  const STORAGE = 'dr-planner.inventoryWanted'
-  function loadWanted(): string[] {
+  // The panel's choices are kept (local storage, copied by the backend): wanted stats, filter, sort.
+  function load<T>(key: string, fallback: T): T {
     try {
-      return JSON.parse(localStorage.getItem(STORAGE) ?? '[]')
+      const v = localStorage.getItem(key)
+      return v === null ? fallback : JSON.parse(v)
     } catch {
-      return []
+      return fallback
     }
   }
-  let wanted = $state<string[]>(loadWanted())
-  $effect(() => {
+  function keep(key: string, value: unknown) {
     try {
-      localStorage.setItem(STORAGE, JSON.stringify(wanted))
+      localStorage.setItem(key, JSON.stringify(value))
     } catch {
       // no storage: the choice lasts for this session
     }
-  })
+  }
+  let wanted = $state<string[]>(load('dr-planner.inventoryWanted', []))
+  let minMatch = $state<number>(load('dr-planner.inventoryShow', 0))
+  let sortByGain = $state<boolean>(load('dr-planner.inventorySort', false))
+  $effect(() => keep('dr-planner.inventoryWanted', wanted))
+  $effect(() => keep('dr-planner.inventoryShow', minMatch))
+  $effect(() => keep('dr-planner.inventorySort', sortByGain))
 
   let tab = $state<string | null>(null)
   let query = $state('')
-  let minMatch = $state(0)
-  let sortByGain = $state(false)
   let picked = $state<string | null>(null)
 
-  // Always read the saves again: the game may have changed them since the last look.
+  // Always read the saves again: the game may have changed them since the last look. While the view is open,
+  // a new save of the game is taken in every 5 s.
   void planner.loadInventory()
+  const poll = setInterval(() => void planner.refreshInventory(), 5000)
+  // How old the game's last save is: loot picked up since is not in it.
+  let now = $state(Date.now() / 1000)
+  const clock = setInterval(() => (now = Date.now() / 1000), 1000)
+  onDestroy(() => (clearInterval(poll), clearInterval(clock)))
+  const age = (saved: number) => {
+    const s = Math.max(0, Math.round(now - saved))
+    return s < 60 ? t('inv.ageSeconds', { n: s }) : s < 3600 ? t('inv.ageMinutes', { n: Math.floor(s / 60) }) : fmtDate(saved)
+  }
 
   const tabs = $derived(planner.inventory)
-  const current = $derived(tabs.find((c) => c.id === tab) ?? tabs.find((c) => c.items.length) ?? tabs[0])
+  // The bag (first tab) by default; the tab picked stays picked when the saves are read again.
+  const current = $derived(tabs.find((c) => c.id === tab) ?? tabs[0])
   const info = (tag: string) => planner.catalog?.attributes[tag]
   const attrName = (tag: string) => info(tag)?.name || tag.split('.').pop() || tag
 
@@ -121,7 +137,13 @@
         </button>
       {/each}
       {#if planner.inventoryLoading}<span class="muted">{t('app.loading')}</span>{/if}
+      {#if current?.saved}
+        <span class="saved" class:old={now - current.saved > 120} title={t('inv.savedTitle')}>{t('inv.savedAgo', { age: age(current.saved) })}</span>
+      {/if}
     </div>
+    {#if current && !current.items.length && !planner.inventoryLoading}
+      <p class="empty-note">{t(current.kind === 'inventory' ? 'inv.emptyBag' : 'inv.emptyStash')}</p>
+    {/if}
 
     <div class="body">
       <div class="grid-wrap scroll">
@@ -532,5 +554,20 @@
   .pa.want {
     color: var(--good);
     font-weight: 700;
+  }
+  .saved {
+    margin-left: auto;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .saved.old {
+    color: var(--gold-bright);
+  }
+  .empty-note {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--text-dim);
   }
 </style>

@@ -67,11 +67,18 @@ Using the app
 -------------
 - The app opens your last played character.
   To see another one, use "Character" at the top.
-- To change the language, use "Language" at the top.
-- "Inventory" at the top shows your bags and your fort stash.
+- Click an item to change it: the stats show what it changes.
+- "Inventory" at the top shows your bag and your fort stash.
   Click "Evaluate the items" to see which items would make you stronger.
-- The game saves your character only from time to time. After playing,
-  click "Read the save again" in the Inventory.
+- "Session" at the top shows what you earned while playing, and your
+  farming runs (elven fragments per run and per hour).
+- Keep the app open while you play: it reads each save the game writes.
+- The game only saves when you change map. To make it save without
+  changing map: open your character's Equipment window and tick, then
+  untick, "hide helmet". The app updates by itself a few seconds later.
+- Text too small or too big? Press Ctrl and + or Ctrl and - (Ctrl and 0
+  for automatic), or use the zoom box at the top right.
+- To change the language, use the language box at the top right.
 - After a game update, click "Game data" at the top, then
   "Extract the data" again.
 

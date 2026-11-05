@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { formatValue } from '../lib/format'
+  import { debug } from '../lib/debug.svelte'
   import { asset } from '../lib/game'
   import { planner } from '../lib/store.svelte'
   import { availableNodes, canRefund, optionLabel, ownedNodes, pathTo } from '../lib/tree'
@@ -293,7 +294,11 @@
           <span class="g good">{pct(g)}</span>
         </button>
       {:else}
-        <p class="none">{planner.treeAnalyzing || !Object.keys(planner.treeImpacts).length ? t('common.analyzing') : t('tree.noneNext')}</p>
+        {#if planner.treeAnalyzeError}
+          <button class="none err" title={planner.treeAnalyzeError} onclick={() => (debug.open = true)}>{t('common.analyzeFailed')}</button>
+        {:else}
+          <p class="none">{planner.treeAnalyzing || !Object.keys(planner.treeImpacts).length ? t('common.analyzing') : t('tree.noneNext')}</p>
+        {/if}
       {/each}
 
       <div class="label">{t('tree.weakest')}</div>
@@ -604,5 +609,14 @@
     font-size: 12px;
     color: var(--text-faint);
     margin: 4px 0;
+  }
+  .none.err {
+    display: block;
+    width: 100%;
+    border: none;
+    background: none;
+    color: var(--bad);
+    text-align: left;
+    cursor: pointer;
   }
 </style>

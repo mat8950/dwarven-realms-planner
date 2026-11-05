@@ -75,7 +75,7 @@ class Planner {
   /** What the impacts rank stats by. The DPS total follows the DPS tab: it counts the
    *  offhands (elemental) as well as the weapon hits (physical). */
   // Boss damage counts against bosses and elites (elite health bar): the default objective.
-  objective = $state<Objective>({ kind: 'dps', boss: true })
+  objective = $state<Objective>(loadObjective())
   /** Impact of one typical roll of each stat on the current build (by tag). */
   impacts = $state<Record<string, Impact>>({})
   /** Impact of removing each attribute the items carry (by probeKey(tag, -value)). */
@@ -108,6 +108,10 @@ class Planner {
     return out
   })
   analyzing = $state(false)
+  /** Why the last stat analysis failed (shown with the key stats; the details are in the debug panel). */
+  analyzeError = $state<string | null>(null)
+  /** When the running analysis started (ms), to tell how long it takes. */
+  analyzeStarted = $state(0)
   hideUseless = $state(false)
   /** DPS tab: main attack ("basic" combo or a weapon skill row) and offhand choices by row. */
   dpsMain = $state<string>('basic')
@@ -116,6 +120,8 @@ class Planner {
   treeOpen = $state(false)
   /** Progression history view, and the open character's snapshots (oldest first). */
   historyOpen = $state(false)
+  /** Play session view: gains since a starting point, from the save each time the game writes it. */
+  sessionOpen = $state(false)
   /** Inventory and stash of the open character (Inventory view). */
   inventoryOpen = $state(false)
   inventory = $state<Container[]>([])
@@ -151,6 +157,8 @@ class Planner {
   skillsTab = $state<'tree' | 'skills'>('tree')
   treeImpacts = $state<Record<string, Impact>>({})
   treeAnalyzing = $state(false)
+  /** Why the last skill analysis failed (the details are in the debug panel). */
+  treeAnalyzeError = $state<string | null>(null)
 
   builds = $state<SavedBuild[]>(loadBuilds())
 
@@ -468,6 +476,7 @@ class Planner {
     if (!this.character) return
     const n = ++this.aseq
     this.analyzing = true
+    this.analyzeStarted = Date.now()
     try {
       const add = this.probes()
       const removals = this.removalProbes()
@@ -479,8 +488,11 @@ class Planner {
       this.impacts = Object.fromEntries(res.slice(0, add.length).map((r) => [r.tag, r]))
       // Keyed by the request's values: the backend's JSON round trip may change the last digits.
       this.removals = Object.fromEntries(res.slice(add.length).map((r, k) => [removals[k][0], r]))
+      this.analyzeError = null
     } catch (e) {
-      this.error = String(e)
+      if (n !== this.aseq) return
+      this.analyzeError = String(e)
+      debug.log('error', 'analyze', `stat analysis failed: ${e}`)
     } finally {
       if (n === this.aseq) this.analyzing = false
     }
@@ -559,6 +571,25 @@ class Planner {
       this.error = String(e)
     } finally {
       this.inventoryLoading = false
+    }
+  }
+
+  /** Reads the saves again and takes them only when the game wrote one since (the Inventory view polls). */
+  async refreshInventory() {
+    if (!this.character || this.inventoryLoading) return
+    try {
+      const fresh = await api.inventory(this.character.save)
+      const stamp = (cs: Container[]) => cs.map((c) => `${c.id}:${c.saved}`).join(',')
+      if (stamp(fresh) === stamp(this.inventory)) return
+      // Gains stay for the items that did not move or change.
+      const same = (cs: Container[]) => new Map<string, string>(cs.flatMap((c) => c.items.map((it) => [`${c.id}#${it.index}`, JSON.stringify(it)] as [string, string])))
+      const before = same(this.inventory)
+      const after = same(fresh)
+      this.itemGains = Object.fromEntries(Object.entries(this.itemGains).filter(([k]) => before.get(k) !== undefined && before.get(k) === after.get(k)))
+      this.inventory = fresh
+      debug.log('info', 'inventory', 'the game saved: inventory read again')
+    } catch (e) {
+      debug.log('warn', 'inventory', `refresh failed: ${e}`)
     }
   }
 
@@ -680,8 +711,11 @@ class Planner {
       if (n !== this.tseq) return
       debug.log('info', 'analyze', `skills: ${probes.length} bonuses analysed in ${(performance.now() - t).toFixed(0)} ms`)
       this.treeImpacts = { ...this.treeImpacts, ...Object.fromEntries(res.map((r, k) => [probeKey(...probes[k]), r])) }
+      this.treeAnalyzeError = null
     } catch (e) {
-      this.error = String(e)
+      if (n !== this.tseq) return
+      this.treeAnalyzeError = String(e)
+      debug.log('error', 'analyze', `skill analysis failed: ${e}`)
     } finally {
       if (n === this.tseq) this.treeAnalyzing = false
     }
@@ -798,6 +832,17 @@ function unquantified(tag: string, i: Impact, statMods: Set<string>): boolean {
   return i.changed === 0 && all.every((x) => Math.abs(x) < 1e-9)
 }
 
+/** The objective chosen last time (kept by App.svelte), else total DPS on bosses and elites. */
+function loadObjective(): Objective {
+  try {
+    const o = JSON.parse(localStorage.getItem('dr-planner.objective') ?? 'null')
+    if (o && typeof o === 'object' && typeof o.kind === 'string') return o
+  } catch {
+    // no storage or an old value: the default
+  }
+  return { kind: 'dps', boss: true }
+}
+
 function loadKinds(): Record<string, Kind> {
   try {
     return JSON.parse(localStorage.getItem(KINDS_KEY) ?? '{}')
@@ -823,3 +868,7 @@ function storeBuilds(b: SavedBuild[]) {
 }
 
 export const planner = new Planner()
+
+// Dev server: this module holds app-wide state, so an edit reloads the page instead of swapping the module (a
+// swapped copy would leave the views on two different states).
+if (import.meta.hot) import.meta.hot.accept(() => location.reload())

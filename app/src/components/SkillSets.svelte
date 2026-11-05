@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatValue } from '../lib/format'
+  import { debug } from '../lib/debug.svelte'
   import { asset } from '../lib/game'
   import { t } from '../lib/i18n.svelte'
   import { CARD_TABLE, levelSteps, shownLevel, shownMax, storedLevel, storedMax } from '../lib/skills'
@@ -63,7 +64,11 @@
         <ImpactBadge value={g} title={t('skills.gainTitle')} />
       </button>
     {:else}
-      <p class="none">{planner.treeAnalyzing || !Object.keys(planner.treeImpacts).length ? t('common.analyzing') : t('skills.none')}</p>
+      {#if planner.treeAnalyzeError}
+        <button class="none err" title={planner.treeAnalyzeError} onclick={() => (debug.open = true)}>{t('common.analyzeFailed')}</button>
+      {:else}
+        <p class="none">{planner.treeAnalyzing || !Object.keys(planner.treeImpacts).length ? t('common.analyzing') : t('skills.none')}</p>
+      {/if}
     {/each}
   </div>
 
@@ -228,5 +233,14 @@
   .fine {
     font-size: 12px;
     color: var(--text-faint);
+  }
+  .none.err {
+    display: block;
+    width: 100%;
+    border: none;
+    background: none;
+    color: var(--bad);
+    text-align: left;
+    cursor: pointer;
   }
 </style>

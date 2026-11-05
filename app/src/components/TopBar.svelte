@@ -2,6 +2,7 @@
   import { formatValue, fromDisplay, toDisplay } from '../lib/format'
   import { asset } from '../lib/game'
   import { LANGUAGES, i18n, stanceName, t } from '../lib/i18n.svelte'
+  import { ZOOMS, zoom } from '../lib/zoom.svelte'
   import { debug } from '../lib/debug.svelte'
   import { planner } from '../lib/store.svelte'
   import ObjectiveSelect from './ObjectiveSelect.svelte'
@@ -196,6 +197,7 @@
   </button>
   <button class="btn" onclick={() => (planner.historyOpen = true)} title={t('top.historyTitle')}>{t('top.history')}</button>
   <button class="btn" disabled={!planner.character} onclick={() => (planner.inventoryOpen = true)} title={t('top.inventoryTitle')}>{t('top.inventory')}</button>
+  <button class="btn" disabled={!planner.character} onclick={() => (planner.sessionOpen = true)} title={t('top.sessionTitle')}>{t('top.session')}</button>
   {#if planner.setup}
     <button class="btn" class:stale={planner.setup.install && !planner.setup.up_to_date} onclick={() => (planner.setupOpen = true)} title={planner.setup.install && !planner.setup.up_to_date ? t('top.dataOld') : t('top.dataTitle')}>{t('top.data')}</button>
   {/if}
@@ -230,6 +232,12 @@
   <button class="btn ghost dbg" class:alert={debug.errors > 0} title={t('top.debugTitle')} onclick={() => (debug.open = !debug.open)}>
     Debug{#if debug.errors}<span class="nerr">{debug.errors}</span>{/if}
   </button>
+  <label class="group zoom" title={t('top.zoomTitle')}>
+    <select class="field" value={String(zoom.choice)} onchange={(e) => zoom.set(e.currentTarget.value === 'auto' ? 'auto' : Number(e.currentTarget.value))}>
+      <option value="auto">{t('top.zoomAuto', { n: Math.round(zoom.applied * 100) })}</option>
+      {#each ZOOMS as z (z)}<option value={String(z)}>{Math.round(z * 100)} %</option>{/each}
+    </select>
+  </label>
   <label class="group lang" title={t('top.language')}>
     <select class="field" value={i18n.lang} onchange={(e) => planner.setLanguage(e.currentTarget.value)}>
       {#each LANGUAGES as l (l.code)}<option value={l.code}>{l.name}</option>{/each}

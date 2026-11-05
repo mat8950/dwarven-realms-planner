@@ -89,6 +89,26 @@ fn main() -> Result<()> {
                     serde_json::to_value(added)?
                 }
                 "history" => serde_json::to_value(history::load(&history::save_key(args["save"].as_str().unwrap_or("").as_ref()))?)?,
+                "session" => {
+                    let save = std::path::PathBuf::from(args["save"].as_str().unwrap_or(""));
+                    dr_core::session::record(&save)?;
+                    serde_json::to_value(dr_core::session::load(&history::save_key(&save)))?
+                }
+                "prefs" => serde_json::to_value(dr_core::setup::prefs())?,
+                "set_prefs" => {
+                    dr_core::setup::set_prefs(serde_json::from_value(args["prefs"].clone())?)?;
+                    serde_json::Value::Null
+                }
+                "run_book" => serde_json::to_value(dr_core::session::book(&history::save_key(args["save"].as_str().unwrap_or("").as_ref())))?,
+                "set_run_note" => {
+                    let key = history::save_key(args["save"].as_str().unwrap_or("").as_ref());
+                    let note = serde_json::from_value(args["note"].clone())?;
+                    serde_json::to_value(dr_core::session::set_note(&key, args["id"].as_str().unwrap_or(""), note)?)?
+                }
+                "set_farm_level" => {
+                    let key = history::save_key(args["save"].as_str().unwrap_or("").as_ref());
+                    serde_json::to_value(dr_core::session::set_level(&key, args["since"].as_f64().unwrap_or(0.0), args["level"].as_i64().unwrap_or(0))?)?
+                }
                 "compute" => serde_json::to_value(planner.compute(&serde_json::from_value::<BuildInput>(args["build"].clone())?)?)?,
                 "log_event" => {
                     let a = |k: &str| args[k].as_str().unwrap_or("").to_string();

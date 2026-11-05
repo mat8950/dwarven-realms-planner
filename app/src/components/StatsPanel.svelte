@@ -1,6 +1,8 @@
 <script lang="ts">
   import { formatDelta, formatValue } from '../lib/format'
   import { asset } from '../lib/game'
+  import { onDestroy } from 'svelte'
+  import { debug } from '../lib/debug.svelte'
   import { raceName, stanceName as stanceLabel, t } from '../lib/i18n.svelte'
   import { planner } from '../lib/store.svelte'
   import type { Objective } from '../lib/types'
@@ -11,6 +13,11 @@
 
   let tab = $state<'stats' | 'caps' | 'dps'>('stats')
   let hovered = $state<string | null>(null)
+  // Seconds the running stat analysis has taken (a slow one points to the debug panel).
+  let now = $state(Date.now())
+  const tick = setInterval(() => (now = Date.now()), 1000)
+  onDestroy(() => clearInterval(tick))
+  const elapsed = $derived(planner.analyzing ? Math.max(0, Math.floor((now - planner.analyzeStarted) / 1000)) : 0)
   let showAllAbilities = $state(false)
 
   const value = (tag: string, s = planner.stats) => (tag === CR ? s?.combat_rating : s?.attributes[tag]) ?? 0
@@ -90,15 +97,31 @@
 
   {#if tab === 'stats'}
     <div class="rows scroll">
-      {#if keyStats.length}
+      {#if planner.character}
         <div class="key">
-          <div class="key-title label" title={t('stats.keysTitle')}>{t('stats.keys', { obj: planner.objectiveLabel() })}</div>
+          <div class="key-title label" title={t('stats.keysTitle')}>
+            {t('stats.keys', { obj: planner.objectiveLabel() })}
+            {#if planner.analyzing}<span class="spin" title={t('stats.keysLoading')}>◌</span>{/if}
+          </div>
+          {#if planner.analyzeError}
+            <button class="kmsg err" title={planner.analyzeError} onclick={() => (debug.open = true)}>{t('stats.keysError')}</button>
+          {/if}
           {#each keyStats as t (t)}
             <div class="krow">
               {#if icon(t)}<img src={asset(icon(t))} alt="" />{:else}<span class="noicon"></span>{/if}
               <span class="lbl">{label(t)}</span>
               <ImpactBadge tag={t} />
             </div>
+          {:else}
+            {#if planner.analyzing || (!planner.analyzeError && !Object.keys(planner.impacts).length)}
+              <p class="kmsg">
+                {t('stats.keysLoading')}
+                {#if elapsed >= 5}· {t('stats.keysSlow', { s: elapsed })} <button class="link" onclick={() => (debug.open = true)}>{t('stats.keysDebug')}</button>{/if}
+              </p>
+              {#each [0, 1, 2] as k (k)}<div class="krow ghost"><span class="noicon"></span><span class="bar"></span></div>{/each}
+            {:else if !planner.analyzeError}
+              <p class="kmsg">{t('stats.keysNone')}</p>
+            {/if}
           {/each}
         </div>
         <hr class="gold-rule sep" />
@@ -220,6 +243,54 @@
   .krow .noicon {
     width: 18px;
     height: 18px;
+  }
+  .krow.ghost .bar {
+    height: 10px;
+    border-radius: 5px;
+    background: linear-gradient(90deg, rgba(201, 162, 74, 0.08), rgba(201, 162, 74, 0.2), rgba(201, 162, 74, 0.08));
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+  @keyframes shimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+  .kmsg {
+    margin: 2px 0 4px;
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .kmsg.err {
+    display: block;
+    width: 100%;
+    padding: 2px 0;
+    border: none;
+    background: none;
+    color: var(--bad);
+    text-align: left;
+    cursor: pointer;
+  }
+  .link {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--gold);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .spin {
+    display: inline-block;
+    margin-left: 6px;
+    color: var(--gold);
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
   .row {
     position: relative;

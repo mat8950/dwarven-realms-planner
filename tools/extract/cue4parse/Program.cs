@@ -103,7 +103,7 @@ static class GameExport {
   // The elven tree (the elven harp): its slots name the DT_Skills_Crafting_S24 rows the game offers.
   const string ElvenTreeWidget = "EasySurvivalRPG/Blueprints/DataTables/StanceSkills/UI_CraftingSkillTree_S24.uasset";
   /// Version of the extracted data's layout. dr-core asks for a new extraction below its DATA_FORMAT.
-  const int Format = 2;
+  const int Format = 3;
   static readonly string[] AnimFolders = ["Combat_Animations/WeaponBasicAttacks/", "UnarmedAutoAttacks/"];
   // Whole texture folders: UI chrome (slot silhouettes, rarity backgrounds, frames) and item modifier icons.
   static readonly string[] TextureFolders = ["EasySurvivalRPG/Textures/UI/", "EasySurvivalRPG/Textures/Fonts/", "EasySurvivalRPG/Blueprints/Equipment_Modifiers/"];
@@ -351,7 +351,7 @@ static class GameExport {
   }
 
   /// The textures the planner UI shows (port of textures.py): icons of item attributes, abilities, weapon
-  /// attacks, skills, status effects and equipment, plus whole UI folders.
+  /// attacks, skills, status effects, rupture fortunes, equipment and resources, plus whole UI folders.
   static List<string> TexturePaths(string tables, List<string> keys, Func<string, string> rel) {
     var wanted = new HashSet<string> { "/Game/EasySurvivalRPG/Textures/New_Icons/dwarven-heart" };
     void Icons(JToken o) {
@@ -372,16 +372,19 @@ static class GameExport {
       foreach (var f in Directory.GetFiles(stance, "DT_*Skills*.json").OrderBy(f => f, StringComparer.Ordinal)) Table(Path.GetRelativePath(tables, f));
     Table("EasySurvivalRPG/Blueprints/DataTables/StanceSkills/Localized/DT_Skills_Crafting_S24.json");
     Table("EasySurvivalRPG/Blueprints/DataTables/LocalizedDataTables/DT_StatusEffects.json");
+    Table("EasySurvivalRPG/Blueprints/Zones/Fortune/Data/DT_RuptureFortunes.json");
     foreach (var row in Rows(tables, "EasySurvivalRPG/Blueprints/DataTables/DT_Items.json")) {
       var tags = string.Concat(((JObject)row.Value).Properties().Where(p => p.Name.StartsWith("ItemTags")).Select(p => p.Value.ToString(Formatting.None)));
-      if (tags.Contains("Items.Equipment") || tags.Contains("Items.Weapon")) Icons(row.Value);
+      if (tags.Contains("Items.Equipment") || tags.Contains("Items.Weapon") || tags.Contains("Items.Resource")) Icons(row.Value);
     }
 
     var all = new HashSet<string>(keys, StringComparer.OrdinalIgnoreCase);
     var outSet = new SortedSet<string>(StringComparer.Ordinal);
+    // References are `/Game/A/B.B`, or `ProjectAlpha/Content/A/B.0` for assets inside the exported folders.
     foreach (var p in wanted) {
-      var k = Content + p.Split('.')[0]["/Game/".Length..] + ".uasset";
-      if (p.StartsWith("/Game/") && all.Contains(k)) outSet.Add(k);
+      var path = p.Split('.')[0];
+      var rest = path.StartsWith("/Game/") ? path["/Game/".Length..] : path.StartsWith(Content) ? path[Content.Length..] : null;
+      if (rest != null && all.Contains(Content + rest + ".uasset")) outSet.Add(Content + rest + ".uasset");
     }
     string[] skip = ["BP_", "UI_", "DT_", "STR_", "E_"];
     foreach (var k in keys)

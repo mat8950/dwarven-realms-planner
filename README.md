@@ -40,11 +40,36 @@ The app opens on its "Game data" screen (also in the top bar, red after a game u
    data folder. The pak is Oodle-compressed: the Oodle library is downloaded once from the
    [OodleUE](https://github.com/WorkingRobot/OodleUE) mirror and checked against its SHA-256.
 
+### Using the planner
+
+The main screen copies the game's character screen: the equipment on the left, the stats on the right. The planner
+opens the character played last; everything is computed with the game's own code.
+
+- **Equipment**: click an item to change its affixes, mods, monogram and forge hearts. The stats follow at once,
+  with the change against the save shown next to each value. "Reset" goes back to the save.
+- **Stats panel**: "Stats" (with "Keys for ...": the stats that raise the objective most, for one typical roll
+  each), "Abilities" (the damage of each attack and ability) and "DPS".
+- **Top bar**:
+  - "Character", "Stance", "Potions": what is computed.
+  - "Objective": what the gains rank (total DPS, on bosses and elites, combat rating...). "Forge" sets the forge
+    hearts the gains count. "Hide useless stats" greys out the stats that do nothing for the build.
+  - "Active effects": buffs and situations (rupture orbs, stacks...).
+  - "Tree": the skill tree ("Main tree", with its best next nodes and a shortest path to any node) and "Stances &
+    cards" (stance skills, crystal cards, elven tree).
+  - "History": the character's progression, one point each time the build changed.
+  - "Inventory": the bag and the fort stash, with the wanted stats filter and the gain of each item on the build.
+  - "Session": what the play session brought, and the farming runs (see below).
+  - "Builds": save and load builds. "Debug" (Ctrl+Shift+D): the journal, for bug reports.
+  - Zoom (auto by default; Ctrl +, Ctrl - and Ctrl 0 for auto) and the language.
+- **Keep the app open while playing**: it reads each save the game writes, for the session, the runs and the
+  inventory.
+- The interface's choices (language, zoom, objective, saved builds, wanted stats...) are kept in `prefs.json`.
+
 The app's folders:
 
 | | Linux | Windows | macOS |
 |---|---|---|---|
-| Data (`game/<build>/`, `mappings/`, `history/`, `settings.json`) | `~/.local/share/dr-planner` | `%APPDATA%\dr-planner` | `~/Library/Application Support/dr-planner` |
+| Data (`game/<build>/`, `mappings/`, `history/`, `settings.json`, `prefs.json` for the interface's choices) | `~/.local/share/dr-planner` | `%APPDATA%\dr-planner` | `~/Library/Application Support/dr-planner` |
 | Cache (`app.log`, `oodle/`) | `~/.cache/dr-planner` | `%LOCALAPPDATA%\dr-planner` | `~/Library/Caches/dr-planner` |
 
 ### How the installers are built
@@ -146,12 +171,18 @@ The game cooks assets with unversioned properties, so each new build needs a fre
   - To add one, copy `en.ts`, translate it, and register it in `DICTS` in `app/src/lib/i18n.svelte.ts`.
   - `t('key', { name })` fills values. `{n|one|other}` picks a plural form with `Intl.PluralRules`.
   - `node app/tests/i18n-check.mjs` checks that every key used exists and that every dictionary is complete.
-- On first start the planner uses the system language when the game has it, else English. The choice made in the top bar is kept (`localStorage`).
+- On first start the planner uses the system language when the game has it, else English. The choice made in the top
+  bar is kept (`prefs.json`, see "Using the planner").
 
 ## Inventory and stash
 
-The "Inventaire" button lists the character's inventory (`<id>.sav`, `InventoryItems`) and the home fort stash tabs
+The "Inventory" button lists the character's bag (`<id>.sav`, `InventoryItems`) and the home fort stash tabs
 (world save `<id>_WRL.sav`, containers `BP_Container_Home_Fort_stash_..._Stash`, `_Stash1`...), laid out like in game.
+
+- **What it shows is the game's last save.** The game writes the save when the player changes map and on a few
+  actions; loot picked up since is not in it yet. The view reads the saves again every 5 seconds and shows how old
+  the last one is. To make the game save without changing map: in the character's Equipment window, tick then untick
+  "hide helmet" (the box saves the game).
 
 - **Wanted stats**: each generated item keeps its affix pools (`AffixesPool`: Inherent, Pool1-3, rows of
   `DT_Base_Item_Attributes`), the affixes a reroll can give. An item scores the number of pools (1 to 3) that can roll a
@@ -172,7 +203,7 @@ The "Inventaire" button lists the character's inventory (`<id>.sav`, `InventoryI
   items, tree or skills): XP alone does not count.
 - **Gear sets**: players swap between a damage set and a farm set, so each point is classed by its equipped
   kill-loot mods (gold, extra elites, containers, item find). With 3 or more it is "Farm", else "DPS". A click
-  changes the class (kept in `localStorage`). The curve follows one set (DPS by default) or both as two series,
+  changes the class (kept in `prefs.json`). The curve follows one set (DPS by default) or both as two series,
   and each point's changes are listed against the previous point of the same set.
 - **The History view**: a single curve with one axis (DPS boss/elite, DPS, combat rating, level or tree points),
   hover details, and a table of every point with what changed since the previous one (items, hearts, tree, skills).
@@ -180,6 +211,28 @@ The "Inventaire" button lists the character's inventory (`<id>.sav`, `InventoryI
   - `capture` adds the changed saves;
   - `import <sav> <key>` adds an older save copy, sorted by date;
   - `show <key>` lists a character's points.
+
+## Play session and farming runs
+
+- **What is read**: each time the game writes a character save, `dr_core::session` reads the resources (with their
+  game names when DT_Items has them), the activity counters, the weapon skills, level, XP and map, and appends them
+  to `<data dir>/history/<save id>.session.jsonl`. The desktop app checks the save folder every 2 seconds while it
+  runs: keep it open while playing.
+- **When the game saves**: when the player leaves a map (with that map in the save), and on a few actions (the
+  Equipment window's "hide helmet" box, crafting, the Hell Forge, the gambler, death, the main menu). Its periodic
+  autosave (`AutosaveTick_Server`, every 15 s) only runs in one zone. So nothing is written during a run. A fortune
+  run starts in the fort (an Infused Time Rupture Beetle spent); each rupture left because of its cards is saved with
+  its Fortune key spent (a reroll); the rupture played is saved when the player leaves it, with all its gains.
+- **The Session view** ("Session" in the top bar):
+  - "Session" tab: gains since the start of the play session (a 20-minute break starts a new one) or since
+    "Start from zero", per hour, and save by save.
+  - "Runs" tab: the runs found in the journal (`app/src/lib/runs.ts`), with what the player adds by hand (rupture
+    level, card, essence, rerolls, containers, kills, notes) in `<data dir>/history/<save id>.runs.json`. The
+    current farm level is entered once and applies to the next runs. Averages by boon and by bane, and a copy for
+    a spreadsheet.
+- **From the command line** (`cargo run --release -p dr-cli --example session`): the same session figures in the
+  terminal, with `--all` (every save field that changed) and `--keep <dir>` (a copy of each save); `import <dir>
+  <save id>` adds such copies to a journal.
 
 ## Measuring in game
 

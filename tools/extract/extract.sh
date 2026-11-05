@@ -129,6 +129,6 @@ for f in CormorantUnicase-Bold MasonSanAltBol Petrona-VariableFont_wght Alegreya
     "$BIN/bin/repak" get "$PAK" "ProjectAlpha/Content/EasySurvivalRPG/Textures/Fonts/$f.ufont" > "$ROOT/data/assets/fonts/$f.ttf"
 done
 
-echo 2 > "$ROOT/data/extracted/FORMAT"   # GameExport.Format / dr_core::setup::DATA_FORMAT
+echo 3 > "$ROOT/data/extracted/FORMAT"   # GameExport.Format / dr_core::setup::DATA_FORMAT
 grep -E '"buildid"' "$GAME/../../appmanifest_2015240.acf" | tr -d '\t"' | sed 's/buildid/build /' > "$ROOT/data/extracted/BUILD"
 echo "== done: $(cat "$ROOT/data/extracted/BUILD")"

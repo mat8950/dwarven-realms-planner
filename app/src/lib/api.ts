@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { debug } from './debug.svelte'
 import type { Probe } from './conditions'
-import type { BuildInput, Candidate, Catalog, CharacterView, Container, ExtractProgress, Impact, SaveEntry, SetupStatus, Snapshot, StatsView } from './types'
+import type { BuildInput, Candidate, Catalog, CharacterView, Container, ExtractProgress, Impact, RunBook, RunNote, SaveEntry, SessionSnapshot, SetupStatus, Snapshot, StatsView } from './types'
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
@@ -40,6 +40,12 @@ export const api = {
   /** Snapshots every character whose save changed; returns their history keys. */
   historyCapture: () => call<string[]>('history_capture'),
   history: (save: string) => call<Snapshot[]>('history', { save }),
+  /** Session journal of a character (one entry per save change, oldest first), after reading its save. */
+  session: (save: string) => call<SessionSnapshot[]>('session', { save }),
+  /** The player's farming notes of a character: run notes and farm level over time. */
+  runBook: (save: string) => call<RunBook>('run_book', { save }),
+  setRunNote: (save: string, id: string, note: RunNote) => call<RunBook>('set_run_note', { save, id, note }),
+  setFarmLevel: (save: string, since: number, level: number) => call<RunBook>('set_farm_level', { save, since, level }),
   /** Inventory, then stash tabs, of a character. */
   inventory: (save: string) => call<Container[]>('inventory', { save }),
   /** What each item would change if it replaced the one in its slot. */
@@ -56,3 +62,7 @@ export const api = {
   extract: () => call<string>('extract'),
   onExtractProgress: (cb: (p: ExtractProgress) => void) => (inTauri ? listen<ExtractProgress>('extract-progress', (e) => cb(e.payload)) : Promise.resolve(() => {})),
 }
+
+// Dev server: this module holds app-wide state, so an edit reloads the page instead of swapping the module (a
+// swapped copy would leave the views on two different states).
+if (import.meta.hot) import.meta.hot.accept(() => location.reload())

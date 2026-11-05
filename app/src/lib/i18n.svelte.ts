@@ -109,3 +109,7 @@ export const stanceName = (enumName: string) => t(`stance.${enumName}`, {}, enum
 export const slotName = (enumName: string) => t(`slot.${enumName}`, {}, enumName)
 export const raceName = (enumName: string) => t(`race.${enumName}`, {}, enumName)
 export const rarityName = (rarity: number) => t(`rarity.${rarity}`, {}, String(rarity))
+
+// Dev server: this module holds app-wide state, so an edit reloads the page instead of swapping the module (a
+// swapped copy would leave the views on two different states).
+if (import.meta.hot) import.meta.hot.accept(() => location.reload())

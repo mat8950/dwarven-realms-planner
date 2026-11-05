@@ -169,6 +169,62 @@ export interface Catalog {
   status_effects: StatusEffectInfo[]
   /** Mod tags the stat code reads: a zero gain there means "no effect on this build". */
   stat_mods: string[]
+  /** Resources the save counts, with their game name (about half of them; the others keep their tag). */
+  resources: ResourceInfo[]
+  /** Rupture fortunes: the boons and banes the fortune NPC's cards pair. */
+  fortunes: FortuneInfo[]
+}
+
+export interface FortuneInfo {
+  /** `EasyRPG.Fortunes.Positive.DoubleContainers`... */
+  tag: string
+  description: string
+  icon: string | null
+  positive: boolean
+}
+
+/** What the player tells about a run (the save does not have it). */
+export interface RunNote {
+  rupture?: number
+  boon?: string
+  bane?: string
+  essence?: number
+  rerolls?: number
+  containers?: number
+  elites?: number
+  mobs?: number
+  notes?: string
+}
+
+export interface RunBook {
+  /** By run id (the end save's time in whole seconds). */
+  notes: Record<string, RunNote>
+  /** `[since, level]`: the farm level from that time on, oldest first. */
+  levels: [number, number][]
+}
+
+export interface ResourceInfo {
+  /** Tag without `EasyRPG.Items.Resource.`: `ElvenFragments`, `CasinoKey`... */
+  tag: string
+  name: string
+  icon: string | null
+}
+
+/** What a character save says about the character's activity, each time the game writes it. */
+export interface SessionSnapshot {
+  /** When the game wrote the save (unix seconds). */
+  time: number
+  name: string
+  zone: string
+  level: number
+  experience: number
+  deaths: number
+  crafting_level: number
+  crafting_experience: number
+  ruptures: number
+  skills: Record<string, number>
+  counters: Record<string, number>
+  resources: Record<string, number>
 }
 
 export interface Attr {
@@ -400,6 +456,8 @@ export interface Container {
   number: number
   size: number
   items: InvItem[]
+  /** When the game wrote the save this tab comes from (unix seconds): it saves when the player changes map. */
+  saved: number
 }
 
 /** An item tried in the build (dr_core::planner::Candidate). */

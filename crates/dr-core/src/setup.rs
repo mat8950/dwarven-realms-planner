@@ -284,6 +284,33 @@ fn settings_path() -> PathBuf {
     data_dir().join("settings.json")
 }
 
+/// The interface's preferences (`dr-planner.*` keys of the UI's local storage), kept in `<data dir>/prefs.json`:
+/// the webview's own storage differs between the dev server and the installed app, and goes with its data.
+fn prefs_path() -> PathBuf {
+    data_dir().join("prefs.json")
+}
+
+static PREFS: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+pub fn prefs() -> std::collections::BTreeMap<String, String> {
+    fs::read_to_string(prefs_path()).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
+}
+
+/// Sets (`Some`) or removes (`None`) preferences.
+pub fn set_prefs(changes: std::collections::BTreeMap<String, Option<String>>) -> Result<()> {
+    let _one = PREFS.lock().unwrap_or_else(|e| e.into_inner());
+    let mut all = prefs();
+    for (k, v) in changes {
+        match v {
+            Some(v) => all.insert(k, v),
+            None => all.remove(&k),
+        };
+    }
+    let p = prefs_path();
+    fs::create_dir_all(p.parent().unwrap())?;
+    fs::write(&p, serde_json::to_string_pretty(&all)?).with_context(|| format!("writing {}", p.display()))
+}
+
 impl Settings {
     pub fn load() -> Settings {
         fs::read_to_string(settings_path()).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
@@ -316,8 +343,9 @@ pub fn game_data_root(build: &str) -> PathBuf {
 }
 
 /// Layout version of the extracted data (`data/extracted/FORMAT`, written by dr-extract and extract.sh).
-/// Data below it is extracted again. 2: elven_tree.json.
-pub const DATA_FORMAT: u32 = 2;
+/// Data below it is extracted again. 2: elven_tree.json. 3: icons of the resources and rupture fortunes, and of the
+/// textures inside the exported folders.
+pub const DATA_FORMAT: u32 = 3;
 
 /// Layout version of the data in `root` (1 when the file is missing).
 pub fn data_format(root: &Path) -> u32 {

@@ -160,6 +160,8 @@ pub struct Catalog {
     /// Mod tags the stat code reads (BP_AttributesComponent): a zero gain for one of them means
     /// "no effect on this build", not "an effect the stats cannot show".
     pub stat_mods: Vec<String>,
+    pub resources: Vec<ResourceInfo>,
+    pub fortunes: Vec<FortuneInfo>,
 }
 
 fn stat_mods(gd: &GameData) -> Vec<String> {
@@ -189,6 +191,65 @@ pub struct StatusEffectInfo {
     pub max_stack: i64,
     pub duration: f64,
     pub attributes: Vec<(String, f64)>,
+}
+
+/// A resource the save counts (`HostPlayerData.Resources`), named after its DT_Items row: the row tagged with it, else a
+/// generic resource item (`EasyRPG.Items.Resource`) whose value is that one resource (the elven fragments item,
+/// for one). About half the resources have a row; the others keep their tag.
+#[derive(Serialize, Clone, Debug)]
+pub struct ResourceInfo {
+    /// Tag without `EasyRPG.Items.Resource.`: `ElvenFragments`, `CasinoKey`...
+    pub tag: String,
+    pub name: String,
+    pub icon: Option<String>,
+}
+
+fn resources(gd: &GameData) -> Result<Vec<ResourceInfo>> {
+    let (mut tagged, mut valued): (BTreeMap<String, ResourceInfo>, BTreeMap<String, ResourceInfo>) = Default::default();
+    for (_, r) in table_rows(gd, "EasySurvivalRPG/Blueprints/DataTables/DT_Items.json")? {
+        let name = ftext(gd, &r["InGameName"]);
+        if name.is_empty() {
+            continue;
+        }
+        let info = |tag: &str| ResourceInfo { tag: tag.to_string(), name: name.clone(), icon: icon_of(&r) };
+        let tags: Vec<&str> = r["ItemTags"].as_array().into_iter().flatten().filter_map(|t| t.as_str()).collect();
+        for tag in tags.iter().filter_map(|t| t.strip_prefix("EasyRPG.Items.Resource.")) {
+            tagged.entry(tag.to_string()).or_insert_with(|| info(tag));
+        }
+        let costs = r["CostValue"]["CostResources"].as_array().map(Vec::as_slice).unwrap_or_default();
+        if tags.contains(&"EasyRPG.Items.Resource") && costs.len() == 1 {
+            if let Some(tag) = costs[0]["ResourceTypeTag"]["TagName"].as_str().and_then(|t| t.strip_prefix("EasyRPG.Items.Resource.")) {
+                valued.entry(tag.to_string()).or_insert_with(|| info(tag));
+            }
+        }
+    }
+    for (tag, info) in valued {
+        tagged.entry(tag).or_insert(info);
+    }
+    Ok(tagged.into_values().collect())
+}
+
+/// A rupture fortune (`DT_RuptureFortunes`): one boon or bane of the cards the fortune NPC deals.
+#[derive(Serialize, Clone, Debug)]
+pub struct FortuneInfo {
+    /// `EasyRPG.Fortunes.Positive.DoubleContainers`...
+    pub tag: String,
+    pub description: String,
+    pub icon: Option<String>,
+    pub positive: bool,
+}
+
+fn fortunes(gd: &GameData) -> Vec<FortuneInfo> {
+    let rows = table_rows(gd, "EasySurvivalRPG/Blueprints/Zones/Fortune/Data/DT_RuptureFortunes.json").unwrap_or_default();
+    let mut out: Vec<FortuneInfo> = rows
+        .into_iter()
+        .filter_map(|(_, r)| {
+            let tag = tag_of(&r["Tag"]);
+            (!tag.is_empty()).then(|| FortuneInfo { positive: tag.contains(".Positive."), description: ftext(gd, &r["Description"]).trim().to_string(), icon: icon_of(&r), tag })
+        })
+        .collect();
+    out.sort_by(|a, b| b.positive.cmp(&a.positive).then(a.tag.cmp(&b.tag)));
+    out
 }
 
 fn status_effects(gd: &GameData) -> Result<Vec<StatusEffectInfo>> {
@@ -486,10 +547,11 @@ fn stance_from_tags(gd: &GameData, tags: &[String]) -> u8 {
         .unwrap_or(0)
 }
 
-/// `/Game/A/B/C.C` -> `A/B/C.webp`.
+/// `/Game/A/B/C.C` (or `ProjectAlpha/Content/A/B/C.0`, how assets inside the exported folders are referenced)
+/// -> `A/B/C.webp`.
 pub fn asset_path(game_path: &str) -> String {
     let p = game_path.split('.').next().unwrap_or(game_path);
-    format!("{}.webp", p.trim_start_matches("/Game/"))
+    format!("{}.webp", p.trim_start_matches("/Game/").trim_start_matches("ProjectAlpha/Content/"))
 }
 
 fn icon_of(row: &Json) -> Option<String> {
@@ -708,6 +770,8 @@ impl Catalog {
             skill_sets: skill_sets(gd)?,
             status_effects: status_effects(gd)?,
             stat_mods: stat_mods(gd),
+            resources: resources(gd)?,
+            fortunes: fortunes(gd),
         })
     }
 }

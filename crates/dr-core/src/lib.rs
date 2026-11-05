@@ -10,6 +10,7 @@ pub mod inventory;
 pub mod natives;
 pub mod planner;
 pub mod save;
+pub mod session;
 pub mod setup;
 pub mod value;
 pub mod vm;

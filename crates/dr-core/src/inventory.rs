@@ -55,6 +55,9 @@ pub struct Container {
     pub size: usize,
     /// Used slots only.
     pub items: Vec<InvItem>,
+    /// When the game wrote the save this comes from (unix seconds): the game saves when the player changes map,
+    /// so loot picked up since is not there yet.
+    pub saved: u64,
 }
 
 /// What the inventory needs from DT_Items: display name, icon and tags of each row.
@@ -135,8 +138,8 @@ impl ItemIndex {
         })
     }
 
-    fn container(&self, id: String, kind: &str, number: usize, items: &[Value]) -> Container {
-        Container { id, kind: kind.into(), number, size: items.len(), items: items.iter().enumerate().filter_map(|(i, v)| self.item(i, v)).collect() }
+    fn container(&self, id: String, kind: &str, number: usize, items: &[Value], saved: u64) -> Container {
+        Container { id, kind: kind.into(), number, size: items.len(), items: items.iter().enumerate().filter_map(|(i, v)| self.item(i, v)).collect(), saved }
     }
 
     /// The character's inventory, then its stash tabs (when the world save is there).
@@ -145,18 +148,18 @@ impl ItemIndex {
         let sav = save::load(save_path)?;
         if let Some(Value::Struct(p)) = sav.get("HostPlayerData") {
             if let Some(Value::Array(items)) = field(p, "InventoryItems") {
-                out.push(self.container("inventory".into(), "inventory", 0, items));
+                out.push(self.container("inventory".into(), "inventory", 0, items, file_time(save_path)));
             }
         }
         let world = world_save(save_path);
         if world.is_file() {
-            out.extend(self.stash(&save::load(&world)?));
+            out.extend(self.stash(&save::load(&world)?, file_time(&world)));
         }
         Ok(out)
     }
 
     /// Stash tabs of a world save: `..._BP_ContainerComponent_Stash`, `..._Stash1`, ... in order.
-    fn stash(&self, world: &StructVal) -> Vec<Container> {
+    fn stash(&self, world: &StructVal, saved: u64) -> Vec<Container> {
         let mut tabs: Vec<(usize, String, &Vec<Value>)> = Vec::new();
         for (_, v) in &world.fields {
             let Value::Array(levels) = v else { continue };
@@ -174,8 +177,12 @@ impl ItemIndex {
             }
         }
         tabs.sort_by_key(|t| t.0);
-        tabs.into_iter().enumerate().map(|(i, (_, name, items))| self.container(name, "stash", i + 1, items)).collect()
+        tabs.into_iter().enumerate().map(|(i, (_, name, items))| self.container(name, "stash", i + 1, items, saved)).collect()
     }
+}
+
+fn file_time(p: &Path) -> u64 {
+    p.metadata().and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_secs()).unwrap_or(0)
 }
 
 fn field<'a>(s: &'a StructVal, prefix: &str) -> Option<&'a Value> {
