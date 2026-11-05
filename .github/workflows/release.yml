@@ -95,7 +95,8 @@ jobs:
           tagName: ${{ inputs.tag }}
           releaseName: Dwarven Realms Planner ${{ inputs.tag }}
           releaseBody: |
-            Installers for Windows (.msi, .exe), Linux (.deb, .rpm, .AppImage) and macOS Apple Silicon (.dmg).
+            Windows: download the `-setup.exe` and run it. Linux: `.AppImage` (updates itself), `.deb` or `.rpm`. macOS Apple Silicon: `.dmg`.
+            Installed copies (Windows setup, AppImage, macOS app) update themselves from version 0.2.1: an "Update" button appears in the top bar.
 
             The planner contains no game data. It reads the data from your own installation of Dwarven Realms.
             This project is not affiliated with or endorsed by Crater Studios.

@@ -14,7 +14,7 @@ The [releases](https://github.com/mat8950/dwarven-realms-planner/releases) have 
 
 | System | Files |
 |---|---|
-| Windows 10/11 (x64) | `-setup.exe`, or the `.zip` (no installation, with a step-by-step README.txt) |
+| Windows 10/11 (x64) | `-setup.exe` (one file: it installs the app, then the app updates itself) |
 | Linux (x64) | `.deb` (Debian, Ubuntu), `.rpm` (Fedora, openSUSE) or `.AppImage` (any distribution) |
 | macOS 11+ (Apple Silicon) | `.dmg` |
 
@@ -30,7 +30,10 @@ From version 0.2.1, the app looks for a newer release a few seconds after it sta
 exists, an "Update" button appears in the top bar:
 
 - the Windows setup, the Linux AppImage and the macOS app download it, install it and restart;
-- the Windows zip and the .deb and .rpm packages cannot update themselves: the button opens the download page.
+- the .deb and .rpm packages cannot update themselves: the button opens the download page.
+
+Older test versions (0.1.x, 0.2.0, and any Windows zip) have no updater: install the `-setup.exe` once. The app's
+data (game data, mappings, history, builds) stays where it is, so nothing has to be extracted again.
 
 The updates are checked against the project's signing key (Tauri updater), so only the project's own builds install.
 
@@ -88,7 +91,7 @@ A release is the tag `v<version>`, with the version of `Cargo.toml` and `app/src
 as a draft: check it and publish it by hand.
 
 - **Windows, built on a Linux PC**: `tools/package/release-windows.sh --release` builds the installer (`-setup.exe`)
-  and the portable zip (with `tools/package/README-windows.txt`), then attaches them to the release. HEAD must be
+  and its updater signature, then attaches them to the release (the portable zip is no longer published). HEAD must be
   committed and pushed. Without `--release` it only builds, into `target/windows/`. It needs the Rust target
   `x86_64-pc-windows-msvc`, [cargo-xwin](https://github.com/rust-cross/cargo-xwin), and Docker: the extractor builds
   in Docker when no .NET SDK is installed, and the installer uses `tools/package/bin/makensis` (NSIS in a Debian

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the Windows installer (setup.exe) and the portable zip on this Linux PC.
+# Builds the Windows installer (setup.exe, the only Windows download) on this Linux PC.
 #   tools/package/release-windows.sh            build only, into target/windows/
 #   tools/package/release-windows.sh --release  also attach both to the GitHub release v<version>
 #                                               (created as a draft when missing; publish it by hand)
@@ -43,21 +43,14 @@ setup="$out/Dwarven-Realms-Planner-$version-win64-setup.exe"
 nsis="target/x86_64-pc-windows-msvc/release/bundle/nsis/Dwarven Realms Planner_${version}_x64-setup.exe"
 cp "$nsis" "$setup"
 cp "$nsis.sig" "$setup.sig"
-zip=$(tools/package/windows-zip.sh | tail -1)
-ls -la "$setup" "$zip"
+ls -la "$setup"
 
 [ $release = 1 ] || exit 0
 
 if gh release view "$tag" >/dev/null 2>&1; then
-  gh release upload "$tag" "$setup" "$setup.sig" "$zip" --clobber
+  gh release upload "$tag" "$setup" "$setup.sig" --clobber
 else
-  gh release create "$tag" "$setup" "$setup.sig" "$zip" --draft --target "$(git rev-parse HEAD)" \
-    --title "Dwarven Realms Planner $tag" --notes "$(cat <<'EOF'
-Windows: download the `-setup.exe` file and run it. The app is not signed, so Windows SmartScreen may ask for confirmation: click "More info", then "Run anyway". The `.zip` is the same app without installation, with a README.txt that explains the first start step by step.
-
-The planner contains no game data. It reads the data from your own installation of Dwarven Realms.
-This project is not affiliated with or endorsed by Crater Studios.
-EOF
-)"
+  gh release create "$tag" "$setup" "$setup.sig" --draft --target "$(git rev-parse HEAD)" \
+    --title "Dwarven Realms Planner $tag" --notes "$(cat tools/package/release-notes.md)"
 fi
 gh release view "$tag" --json url,isDraft,assets -q '.url + (if .isDraft then " (draft)" else "" end) + "\n" + ([.assets[].name] | join("\n"))'
