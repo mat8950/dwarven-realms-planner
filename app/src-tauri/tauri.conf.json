@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Dwarven Realms Planner",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "identifier": "fr.mat.drplanner",
   "build": {
     "frontendDist": "../dist",
@@ -27,7 +27,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "externalBin": ["binaries/dr-extract"],
+    "externalBin": [
+      "binaries/dr-extract"
+    ],
     "publisher": "Dwarven Realms Planner contributors",
     "copyright": "MIT OR Apache-2.0. Not affiliated with Crater Studios.",
     "category": "Utility",
@@ -46,6 +48,18 @@
     },
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU3REZDOERFOERGOTZBOEIKUldTTGF2bU4zc2pmNTF0NGZ0ZWFyVzRsTTlDV2xnOHFlSnBYV29ZWXMzeUhhZU5KUTJkYnhIbWkK",
+      "endpoints": [
+        "https://github.com/mat8950/dwarven-realms-planner/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

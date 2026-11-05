@@ -24,6 +24,16 @@ The installers are not signed:
 - macOS: the first time, open the app with right-click > Open. Or run
   `xattr -dr com.apple.quarantine "/Applications/Dwarven Realms Planner.app"`.
 
+### Updates
+
+From version 0.2.1, the app looks for a newer release a few seconds after it starts, then every 6 hours. When one
+exists, an "Update" button appears in the top bar:
+
+- the Windows setup, the Linux AppImage and the macOS app download it, install it and restart;
+- the Windows zip and the .deb and .rpm packages cannot update themselves: the button opens the download page.
+
+The updates are checked against the project's signing key (Tauri updater), so only the project's own builds install.
+
 ### First run: extracting the game data
 
 The app opens on its "Game data" screen (also in the top bar, red after a game update):
@@ -83,6 +93,10 @@ as a draft: check it and publish it by hand.
   `x86_64-pc-windows-msvc`, [cargo-xwin](https://github.com/rust-cross/cargo-xwin), and Docker: the extractor builds
   in Docker when no .NET SDK is installed, and the installer uses `tools/package/bin/makensis` (NSIS in a Debian
   container) when NSIS is not installed.
+- **Updater**: every bundle is signed with the project's updater key. Locally it is read from
+  `~/.tauri/dr-planner.key` and `~/.tauri/dr-planner.password`; on GitHub from the repository secrets
+  `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Once every system is in the release, run
+  `tools/package/update-manifest.sh v<version>`: it writes the release's `latest.json`, which the installed apps read.
 - **Linux and macOS, on GitHub**: `.github/workflows/release.yml` builds them with
   [tauri-action](https://github.com/tauri-apps/tauri-action) on Ubuntu 22.04 and macOS (arm64) runners. Run it by
   hand: `gh workflow run release.yml -f platform=linux -f tag=v0.1.0`, the same with `platform=macos`. Without

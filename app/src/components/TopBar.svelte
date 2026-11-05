@@ -2,6 +2,7 @@
   import { formatValue, fromDisplay, toDisplay } from '../lib/format'
   import { asset } from '../lib/game'
   import { LANGUAGES, i18n, stanceName, t } from '../lib/i18n.svelte'
+  import { updater } from '../lib/update.svelte'
   import { ZOOMS, zoom } from '../lib/zoom.svelte'
   import { debug } from '../lib/debug.svelte'
   import { planner } from '../lib/store.svelte'
@@ -229,6 +230,16 @@
   <button class="btn" onclick={() => planner.resetEdits()} disabled={!editedCount && !activeCount && planner.stance === null && planner.potions === null}>
     {t('top.reset')}{#if editedCount}<span class="edited">{t('top.edited', { n: editedCount })}</span>{/if}
   </button>
+  {#if updater.available}
+    <button
+      class="btn update"
+      disabled={updater.installing}
+      title={`${t(updater.automatic ? 'top.updateTitle' : 'top.updateManualTitle', { v: updater.available.version })}${updater.error ? `\n${updater.error}` : ''}${updater.available.notes ? `\n\n${updater.available.notes}` : ''}`}
+      onclick={() => updater.install()}
+    >
+      {updater.installing ? t('top.updating', { n: Math.round((updater.progress ?? 0) * 100) }) : t('top.update', { v: updater.available.version })}
+    </button>
+  {/if}
   <button class="btn ghost dbg" class:alert={debug.errors > 0} title={t('top.debugTitle')} onclick={() => (debug.open = !debug.open)}>
     Debug{#if debug.errors}<span class="nerr">{debug.errors}</span>{/if}
   </button>
@@ -421,5 +432,10 @@
     color: var(--text-faint);
     font-family: var(--font-ui);
     font-size: 12px;
+  }
+  .btn.update {
+    border-color: var(--gold);
+    color: var(--gold-bright);
+    background: rgba(201, 162, 74, 0.12);
   }
 </style>

@@ -125,6 +125,10 @@ const fr = {
   'top.language': 'Langue',
   'top.zoomTitle': "Zoom de l'interface (Ctrl + / Ctrl − ; Ctrl 0 : automatique)",
   'top.zoomAuto': 'Zoom auto ({n} %)',
+  'top.update': 'Mise à jour {v}',
+  'top.updateTitle': "Version {v} disponible : cliquer pour l'installer. L'app redémarre ensuite.",
+  'top.updateManualTitle': "Version {v} disponible : cliquer pour ouvrir la page de téléchargement (cette copie ne se met pas à jour seule).",
+  'top.updating': 'Téléchargement {n} %',
 
   'fx.game': 'Effets du jeu',
   'fx.gameHint': "Buffs actifs en jeu (icônes en haut de l'écran), avec leurs piles : stats par pile × piles, et effets lus par le code.",

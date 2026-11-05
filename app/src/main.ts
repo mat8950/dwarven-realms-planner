@@ -9,12 +9,14 @@ async function start() {
   const { debug, installGlobalHandlers } = await import('./lib/debug.svelte')
   const { loadFonts } = await import('./lib/game')
   const { initZoom } = await import('./lib/zoom.svelte')
+  const { initUpdater } = await import('./lib/update.svelte')
 
   installGlobalHandlers()
   loadFonts()
   initZoom()
   debug.log('info', 'app', `UI démarrée (${'__TAURI_INTERNALS__' in window ? 'Tauri' : 'navigateur'})`)
   mount(App, { target: document.getElementById('app')! })
+  initUpdater()
 }
 
 void start()

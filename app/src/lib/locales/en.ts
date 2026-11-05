@@ -126,6 +126,10 @@ const en: Record<keyof typeof fr, string> = {
   'top.language': 'Language',
   'top.zoomTitle': 'Interface zoom (Ctrl + / Ctrl −; Ctrl 0: automatic)',
   'top.zoomAuto': 'Auto zoom ({n} %)',
+  'top.update': 'Update {v}',
+  'top.updateTitle': 'Version {v} is available: click to install it. The app restarts afterwards.',
+  'top.updateManualTitle': 'Version {v} is available: click to open the download page (this copy does not update itself).',
+  'top.updating': 'Downloading {n} %',
 
   'fx.game': 'Game effects',
   'fx.gameHint': 'Buffs active in game (icons at the top of the screen), with their stacks: stats per stack × stacks, and effects read by the code.',

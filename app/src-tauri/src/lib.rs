@@ -311,6 +311,24 @@ async fn session(save: String) -> Result<Vec<session::Snapshot>, String> {
     .map_err(|e| e.to_string())?
 }
 
+/// How this copy of the app can update itself: `installer` (Windows, installed with the setup: the updater runs
+/// the new setup), `appimage` (Linux AppImage), `bundle` (macOS app), or `manual` (the Windows zip, the .deb and
+/// .rpm packages: the player downloads the new version).
+#[tauri::command]
+fn update_mode() -> &'static str {
+    let exe = std::env::current_exe().unwrap_or_default();
+    if cfg!(target_os = "windows") {
+        // The NSIS setup leaves its uninstaller next to the app.
+        if exe.with_file_name("uninstall.exe").is_file() { "installer" } else { "manual" }
+    } else if cfg!(target_os = "macos") {
+        if exe.to_string_lossy().contains(".app/Contents/MacOS/") { "bundle" } else { "manual" }
+    } else if std::env::var_os("APPIMAGE").is_some() {
+        "appimage"
+    } else {
+        "manual"
+    }
+}
+
 #[tauri::command]
 fn prefs() -> std::collections::BTreeMap<String, String> {
     dr_core::setup::prefs()
@@ -412,6 +430,9 @@ pub fn run() {
     debuglog::info("app", &format!("start v{} ({}), data {root}", env!("CARGO_PKG_VERSION"), if cfg!(debug_assertions) { "debug" } else { "release" }));
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_opener::init())
         .register_uri_scheme_protocol("drassets", |_ctx, request| gamesetup::serve_asset(request))
         .manage(Worker(Mutex::new(spawn_worker("main")), Mutex::new(spawn_worker("analysis"))))
         .invoke_handler(tauri::generate_handler![
@@ -426,6 +447,7 @@ pub fn run() {
             session,
             prefs,
             set_prefs,
+            update_mode,
             run_book,
             set_run_note,
             set_farm_level,

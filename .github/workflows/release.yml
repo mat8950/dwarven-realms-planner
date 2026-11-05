@@ -82,9 +82,13 @@ jobs:
         shell: bash
         run: tools/extract/build-extractor.sh ${{ matrix.rid }}
 
+      # The updater artifacts (.sig) are signed with the project's key (repository secrets). latest.json is written
+      # once every system is in the release: tools/package/update-manifest.sh.
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: app
           args: ${{ matrix.args }}

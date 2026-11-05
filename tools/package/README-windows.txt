@@ -81,6 +81,9 @@ Using the app
 - To change the language, use the language box at the top right.
 - After a game update, click "Game data" at the top, then
   "Extract the data" again.
+- When a new version of the app exists, an "Update" button appears at
+  the top. With the setup, it installs it and restarts the app. With
+  this zip, it opens the download page.
 
 
 Something went wrong?
