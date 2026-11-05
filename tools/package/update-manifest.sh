@@ -11,14 +11,17 @@ tag="${1:?usage: update-manifest.sh <tag>}"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
+repo=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 gh release view "$tag" --json body,assets > "$work/release.json"
 gh release download "$tag" -p '*.sig' -D "$work/sig" --clobber
 
-python3 - "$tag" "$work/release.json" "$work/sig" "$work/latest.json" <<'EOF'
+python3 - "$repo" "$tag" "$work/release.json" "$work/sig" "$work/latest.json" <<'EOF'
 import datetime, json, os, sys
-tag, release, sigdir, out = sys.argv[1:]
+repo, tag, release, sigdir, out = sys.argv[1:]
 r = json.load(open(release))
-assets = {a['name']: a['url'] for a in r['assets']}
+# The tag's download URL, not the asset's own: while the release is a draft the asset URL has an "untagged-..." part
+# that stops working once it is published.
+assets = {a['name']: f'https://github.com/{repo}/releases/download/{tag}/{a["name"]}' for a in r['assets']}
 platforms = {}
 def add(keys, suffix):
     for name, url in assets.items():
