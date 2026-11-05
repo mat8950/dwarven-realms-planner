@@ -74,6 +74,8 @@ opens the character played last; everything is computed with the game's own code
   - "Session": what the play session brought, and the farming runs (see below).
   - "Builds": save and load builds. "Debug" (Ctrl+Shift+D): the journal, for bug reports.
   - Zoom (auto by default; Ctrl +, Ctrl - and Ctrl 0 for auto) and the language.
+  - "Reload save": reads the character's save again after the game saved (new gear, levels). The equipment screen
+    does not follow the game by itself; the Inventory and Session views do. Your edits are dropped.
 - **Keep the app open while playing**: it reads each save the game writes, for the session, the runs and the
   inventory.
 - The interface's choices (language, zoom, objective, saved builds, wanted stats...) are kept in `prefs.json`.
@@ -275,6 +277,7 @@ To log every hit and calibrate an offhand ability:
 - **Weapon swap**: any of the 296 game weapons (the `Items.Weapon.*` rows of `DT_Items`) can replace the one in hand. Its rarity, tier and hearts are kept.
   The item is built with the game's own `Make Item Data by Handle`, and the stance follows the weapon.
 - **Gambler forge (hearts)**: `UI_ItemGambler.Upgrade` multiplies every stat of the item by 1.1 per heart.
+  Pets and the offhand slots (goblet, horn, trinket, belt) cannot be forged in the game: the app keeps their hearts as in the save.
   - The exceptions are the tags `CheckTagsForMonograms` skips: `Items.Modifiers`, `Attributes.GlobalModifiers`,
     `Attributes.Base.Mastery`, and `Attributes.Abilities.*` except `*.DamageMultiplier`.
   - Heart n+1 succeeds with probability (10 - n)/10, and a failure destroys the item.

@@ -227,6 +227,7 @@
   </div>
 
   <div class="spacer"></div>
+  <button class="btn" title={t('top.reloadTitle')} onclick={() => void planner.reloadSave()} disabled={!planner.character}>{t('top.reload')}</button>
   <button class="btn" onclick={() => planner.resetEdits()} disabled={!editedCount && !activeCount && planner.stance === null && planner.potions === null}>
     {t('top.reset')}{#if editedCount}<span class="edited">{t('top.edited', { n: editedCount })}</span>{/if}
   </button>

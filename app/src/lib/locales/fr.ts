@@ -119,6 +119,8 @@ const fr = {
   'top.historyTitle': 'Progression du personnage : stuff, dégâts, arbre, compétences',
   'top.builds': 'Builds',
   'top.reset': 'Réinitialiser',
+  'top.reload': 'Recharger la sauvegarde',
+  'top.reloadTitle': "Relit la sauvegarde du personnage, après une sauvegarde du jeu (nouvel équipement, niveaux). Tes modifications sont perdues.",
   'top.edited': ' · {n} {n|modifié|modifiés}',
   'top.debugTitle': 'Debug (Ctrl+Shift+D)',
   'top.buildTitle': 'Build Steam des données extraites',

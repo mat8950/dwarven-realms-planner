@@ -19,6 +19,10 @@ export const RIGHT_SLOTS = [8, 14, 9, 6, 7, 5]
 export const TOP_SLOT = 10
 export const WEAPON_CHILDREN = [11, 12, 13]
 export const PET_SLOT = 14
+/** Goblet, horn, trinket and belt: the offhand slots. */
+export const OFFHAND_SLOTS = [11, 12, 13, 15]
+/** The gambler's forge takes neither pets nor offhands: their hearts stay what the save says. */
+export const noForge = (slot: number | string | null): boolean => slot === PET_SLOT || (typeof slot === 'number' && OFFHAND_SLOTS.includes(slot))
 
 export const MOD_PREFIX = 'EasyRPG.Items.Modifiers.'
 const ABILITY_MOD = /^EasyRPG\.Attributes\.Abilities\.[^.]+\.Modifier\./

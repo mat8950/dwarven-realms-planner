@@ -2,7 +2,7 @@ import { api } from './api'
 import { debug } from './debug.svelte'
 import { i18n, t } from './i18n.svelte'
 import { forgeExempt, heartFactor, scaleHearts } from './forge'
-import { PET_SLOT, isMod, loadFonts } from './game'
+import { isMod, loadFonts, noForge } from './game'
 import { isLootMod, modCondition, type Active, type Condition, type Probe } from './conditions'
 import { autoKind, type Kind } from './history'
 import { probeKey, skillProbes, treeProbes } from './tree'
@@ -268,6 +268,18 @@ class Planner {
     void this.loadHistory()
   }
 
+  /** Reads the current character's save again (the game wrote a new one: new gear, levels). The edits are dropped. */
+  async reloadSave() {
+    if (!this.character) return
+    const path = this.character.save
+    try {
+      this.saves = await api.saves()
+    } catch (e) {
+      debug.log('warn', 'open', `save list failed: ${e}`)
+    }
+    await this.open(path)
+  }
+
   resetEdits() {
     this.edits = {}
     this.tried = {}
@@ -309,9 +321,9 @@ class Planner {
   }
 
   /** Hearts the build uses for an item (forge mode overrides the per-item choice).
-   *  The gambler does not take pets. */
+   *  The gambler does not take pets or offhands (goblet, horn, trinket, belt). */
   heartsOf(sel: Selection): number {
-    if (sel === PET_SLOT) return this.originalHearts(sel)
+    if (noForge(sel)) return this.originalHearts(sel)
     if (this.forgeMode === 'none') return 0
     if (this.forgeMode === 'max') return 10
     return this.hearts[key(sel)] ?? this.originalHearts(sel)

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { MAX_HEARTS, heartFactor, successChance } from '../lib/forge'
   import { formatValue, fromDisplay, toDisplay } from '../lib/format'
-  import { PET, PET_SLOT, RARITY, abilityOfMod, asset, isMod } from '../lib/game'
+  import { PET, PET_SLOT, RARITY, abilityOfMod, asset, isMod, noForge } from '../lib/game'
   import { rarityName, slotName as slotLabel, stanceName as stanceLabel, t } from '../lib/i18n.svelte'
   import { planner } from '../lib/store.svelte'
   import ImpactBadge from './ImpactBadge.svelte'
@@ -143,7 +143,7 @@
         {/if}
       {/if}
 
-      {#if sel !== PET_SLOT}
+      {#if !noForge(sel)}
         <h3 class="label">{t('editor.forge')} <span class="count">{hearts}/{MAX_HEARTS}</span></h3>
         <div class="hearts">
           {#each Array(MAX_HEARTS) as _, i (i)}

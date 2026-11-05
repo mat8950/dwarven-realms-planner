@@ -120,6 +120,8 @@ const en: Record<keyof typeof fr, string> = {
   'top.historyTitle': "Character progression: gear, damage, tree, skills",
   'top.builds': 'Builds',
   'top.reset': 'Reset',
+  'top.reload': 'Reload save',
+  'top.reloadTitle': "Read the character's save again, after the game saved (new gear, levels). Your edits are dropped.",
   'top.edited': ' · {n} edited',
   'top.debugTitle': 'Debug (Ctrl+Shift+D)',
   'top.buildTitle': 'Steam build of the extracted data',
