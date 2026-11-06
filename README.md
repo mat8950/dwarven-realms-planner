@@ -18,6 +18,26 @@ The [releases](https://github.com/mat8950/dwarven-realms-planner/releases) have 
 | Linux (x64) | `.deb` (Debian, Ubuntu), `.rpm` (Fedora, openSUSE) or `.AppImage` (any distribution) |
 | macOS 11+ (Apple Silicon) | `.dmg` |
 
+### Transparency: the code is open, build it yourself if you prefer
+
+Everything is in this repository. You can either:
+
+- **run the ready-made executable** from the [releases](https://github.com/mat8950/dwarven-realms-planner/releases), or
+- **clone and build it yourself**, to check what you run (see "Running the app from source" below):
+
+      git clone https://github.com/mat8950/dwarven-realms-planner.git
+      cd dwarven-realms-planner
+      tools/extract/build-extractor.sh   # the dr-extract sidecar (.NET 10 SDK, or Docker)
+      cd app && npm install
+      npx tauri build                    # installer in target/release/bundle/ (or `npx tauri dev` to run it)
+
+  You need Rust, Node.js and the [Tauri prerequisites](https://tauri.app/start/prerequisites/). A build from source
+  works the same, except that it has no signature for the in-app updater: update it with `git pull` and a new build.
+
+The planner reads your game folder and your saves, and writes only to its own data folder (see "The app's folders").
+It sends nothing anywhere. The only network accesses are the update check on GitHub, and the downloads of RE-UE4SS
+and the Oodle library when you ask for them on the "Game data" screen (both checked against a SHA-256).
+
 The installers are not signed:
 
 - Windows: SmartScreen asks for confirmation. Click "More info", then "Run anyway".

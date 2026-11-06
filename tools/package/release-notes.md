@@ -8,5 +8,7 @@ From version 0.2.1 the app updates itself: when a new version is out, an **Updat
 
 **Already on an older test version (0.1.x, 0.2.0, or the zip)?** Run this setup once. It replaces the old copy, and your data (game data, history, builds) is kept: no new extraction.
 
+**Prefer to build it yourself?** The code is open: `git clone https://github.com/mat8950/dwarven-realms-planner.git`, then follow "Running the app from source" in the README. You can use the ready-made executable or your own build.
+
 The planner contains no game data. It reads the data from your own installation of Dwarven Realms.
 This project is not affiliated with or endorsed by Crater Studios.
